@@ -741,7 +741,8 @@ end subroutine UGridCreateUGDM
 
 ! ************************************************************************** !
 
-subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
+subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option, &
+                                options_prefix)
 
   !
   ! Sets up PETSc DM Shell for unstructured grid
@@ -759,6 +760,7 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
   type(ugdm_type), pointer :: ugdm
   PetscInt :: ndof
   type(option_type) :: option
+  character(len=*), optional :: options_prefix
 
   Vec :: global_vec, local_vec
   !Mat :: jac
@@ -766,6 +768,9 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
 
   ! Create the DMShell and process -dm_vec_type
   call DMShellCreate(option%mycomm,da,ierr);CHKERRQ(ierr)
+  if (present(options_prefix)) then
+    call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
+  endif
   call DMSetFromOptions(da,ierr);CHKERRQ(ierr)
 
   ! Create UGDM

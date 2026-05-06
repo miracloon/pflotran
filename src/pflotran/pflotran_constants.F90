@@ -155,6 +155,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: THREENPDOF = 3
   PetscInt, parameter, public :: NFLOWDOF = 4
   PetscInt, parameter, public :: NTRANDOF = 5
+  PetscInt, parameter, public :: NGEOPDOF = 6
   PetscInt, parameter, public :: NGEODOF = 7
 
   PetscInt, parameter, public :: GLOBAL = 1

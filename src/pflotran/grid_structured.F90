@@ -203,7 +203,7 @@ end function StructGridCreate
 ! ************************************************************************** !
 
 subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
-                              stencil_type,option)
+                              stencil_type,option,options_prefix)
   !
   ! StructGridCreateDMs: Creates structured distributed, parallel meshes/grids
   !
@@ -220,6 +220,7 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
   PetscInt :: ndof
   PetscInt :: stencil_width
   DMDAStencilType :: stencil_type
+  character(len=*), optional :: options_prefix
 
   PetscErrorCode :: ierr
 
@@ -234,6 +235,9 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
                     stencil_width,PETSC_NULL_INTEGER_ARRAY, &
                     PETSC_NULL_INTEGER_ARRAY,PETSC_NULL_INTEGER_ARRAY, &
                     da,ierr);CHKERRQ(ierr)
+  if (present(options_prefix)) then
+    call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
+  endif
   call DMSetFromOptions(da,ierr);CHKERRQ(ierr)
   call DMSetup(da,ierr);CHKERRQ(ierr)
   call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &

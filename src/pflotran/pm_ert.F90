@@ -526,10 +526,8 @@ recursive subroutine PMERTInitializeRun(this)
   grid => patch%grid
   option => this%option
 
-  call DiscretizationDuplicateVector(this%realization%discretization, &
-                                     this%realization%field%work,this%rhs)
-
-  ! Initialize to zeros
+  call DiscretizationCreateVector(this%realization%discretization,NGEOPDOF, &
+                                  this%rhs,GLOBAL,option)
   call VecZeroEntries(this%rhs,ierr);CHKERRQ(ierr)
 
   ! copy conductivities if defined
@@ -549,22 +547,25 @@ recursive subroutine PMERTInitializeRun(this)
         option%inversion%calculate_ert_jacobian) then
       this%coupled_ert_flow_jacobian = PETSC_TRUE
       if (option%iflowmode == ZFLOW_MODE) then
-        call DiscretizationDuplicateVector(this%realization%discretization, &
-                                           this%realization%field%work, &
-                                           this%dconductivity_dsaturation)
+        call DiscretizationCreateVector(this%realization%discretization, &
+                                       NGEOPDOF, &
+                                       this%dconductivity_dsaturation, &
+                                       GLOBAL,option)
         call VecZeroEntries(this%dconductivity_dsaturation,ierr);CHKERRQ(ierr)
         if (zflow_sol_tran_eq > 0 .or. option%itranmode == RT_MODE) then
-          call DiscretizationDuplicateVector(this%realization%discretization, &
-                                             this%realization%field%work, &
-                                             this%dconductivity_dconcentration)
+          call DiscretizationCreateVector(this%realization%discretization, &
+                                         NGEOPDOF, &
+                                         this%dconductivity_dconcentration, &
+                                         GLOBAL,option)
           call VecZeroEntries(this%dconductivity_dconcentration, &
                               ierr);CHKERRQ(ierr)
         endif
         if (option%inversion%invert_for_porosity) then
           this%invert_for_porosity = PETSC_TRUE
-          call DiscretizationDuplicateVector(this%realization%discretization, &
-                                           this%realization%field%work, &
-                                           this%dconductivity_dporosity)
+          call DiscretizationCreateVector(this%realization%discretization, &
+                                         NGEOPDOF, &
+                                         this%dconductivity_dporosity, &
+                                         GLOBAL,option)
           call VecZeroEntries(this%dconductivity_dporosity,ierr);CHKERRQ(ierr)
         endif
       endif
@@ -650,7 +651,7 @@ recursive subroutine PMERTInitializeRun(this)
                        option%mycomm,ierr);CHKERRQ(ierr)
   endif
 
-  call DiscretizationCreateVector(this%realization%discretization,ONEDOF, &
+  call DiscretizationCreateVector(this%realization%discretization,NGEOPDOF, &
                                   natural_vec,NATURAL,option)
   call VecZeroEntries(natural_vec,ierr);CHKERRQ(ierr)
   do i = 1, size(this%survey%ipos_electrode)
@@ -809,7 +810,7 @@ subroutine PMERTSetupSolvers(this)
   endif
 
   call DiscretizationCreateMatrix(this%realization%discretization, &
-                                  ONEDOF, &
+                                  NGEOPDOF, &
                                   solver%Mpre_mat_type, &
                                   solver%Mpre, &
                                   PUCast(associated(this%realization%patch% &
@@ -1225,7 +1226,7 @@ subroutine PMERTSolve(this,time,ierr)
     endif
 
     call DiscretizationGlobalToLocal(discretization,field%work, &
-                                     field%work_loc,ONEDOF)
+                                     field%work_loc,NGEOPDOF)
     call VecGetArray(field%work_loc,vec_ptr,ierr);CHKERRQ(ierr)
     ! store potentials for each electrode
     do ghosted_id=1,grid%ngmax
