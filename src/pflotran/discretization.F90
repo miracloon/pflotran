@@ -836,7 +836,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
         case(UNSTRUCTURED_GRID)
           call UGridDMCreateVector(discretization%grid%unstructured_grid, &
                                    dm_ptr%ugdm,vector, &
-                                   vector_type,option)
+                                   vector_type,option,dm_ptr%dm)
         end select
   end select
 

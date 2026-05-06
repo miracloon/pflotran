@@ -389,7 +389,7 @@ end function UGridPolyhedraCreate
 
 ! ************************************************************************** !
 
-subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
+subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,dm)
   !
   ! Constructs mappings / scatter contexts for PETSc DM
   ! object
@@ -407,6 +407,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   type(ugdm_type), pointer :: ugdm
   PetscInt :: ndof
   type(option_type) :: option
+  DM, optional :: dm
 
   PetscInt, pointer :: int_ptr(:)
   PetscInt :: local_id, ghosted_id
@@ -418,6 +419,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   PetscViewer :: viewer
 #endif
   PetscErrorCode :: ierr
+  VecType :: dm_vec_type
 
   PetscInt, allocatable :: int_array(:)
 
@@ -439,6 +441,12 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecSetSizes(ugdm%global_vec,unstructured_grid%nlmax*ndof,PETSC_DECIDE, &
                    ierr);CHKERRQ(ierr)
   call VecSetBlockSize(ugdm%global_vec,ndof,ierr);CHKERRQ(ierr)
+  if (present(dm)) then
+    call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+    if (len_trim(dm_vec_type) > 0) then
+      call VecSetType(ugdm%global_vec,dm_vec_type,ierr);CHKERRQ(ierr)
+    endif
+  endif
   call VecSetFromOptions(ugdm%global_vec,ierr);CHKERRQ(ierr)
 
   ! create local vec
@@ -448,6 +456,12 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecSetSizes(ugdm%local_vec,unstructured_grid%ngmax*ndof,PETSC_DECIDE, &
                    ierr);CHKERRQ(ierr)
   call VecSetBlockSize(ugdm%local_vec,ndof,ierr);CHKERRQ(ierr)
+  if (present(dm)) then
+    call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+    if (len_trim(dm_vec_type) > 0) then
+      call VecSetType(ugdm%local_vec,dm_vec_type,ierr);CHKERRQ(ierr)
+    endif
+  endif
   call VecSetFromOptions(ugdm%local_vec,ierr);CHKERRQ(ierr)
 
   ! IS for global numbering of local, non-ghosted cells
@@ -750,11 +764,12 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
   !Mat :: jac
   PetscErrorCode :: ierr
 
-  ! Create UGDM
-  call UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
-
-  ! Create the DMShell
+  ! Create the DMShell and process -dm_vec_type
   call DMShellCreate(option%mycomm,da,ierr);CHKERRQ(ierr)
+  call DMSetFromOptions(da,ierr);CHKERRQ(ierr)
+
+  ! Create UGDM
+  call UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,da)
 
   ! Set VecScatters
   call DMShellSetGlobalToLocalVecScatter(da,ugdm%scatter_gtol, &
@@ -765,8 +780,8 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
                                         ierr);CHKERRQ(ierr)
 
   ! Create vectors
-  call UGridDMCreateVector(unstructured_grid,ugdm,global_vec,GLOBAL,option)
-  call UGridDMCreateVector(unstructured_grid,ugdm,local_vec,LOCAL,option)
+  call UGridDMCreateVector(unstructured_grid,ugdm,global_vec,GLOBAL,option,da)
+  call UGridDMCreateVector(unstructured_grid,ugdm,local_vec,LOCAL,option,da)
 
   ! Set vectors
   call DMShellSetGlobalVector(da,global_vec,ierr);CHKERRQ(ierr)
@@ -917,7 +932,7 @@ end subroutine UGridDMCreateMatrix
 
 ! ************************************************************************** !
 
-subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
+subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option,dm)
   !
   ! Creates a global vector with PETSc ordering
   !
@@ -934,8 +949,10 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
   Vec :: vec
   PetscInt :: vec_type
   type(option_type) :: option
+  DM, optional :: dm
 
   PetscErrorCode :: ierr
+  VecType :: dm_vec_type
 
   select case(vec_type)
     case(GLOBAL)
@@ -948,6 +965,12 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
       call VecSetLocalToGlobalMapping(vec,ugdm%mapping_ltog, &
                                       ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(LOCAL)
       !call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%ngmax* &
@@ -957,6 +980,12 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
       call VecSetSizes(vec,unstructured_grid%ngmax*ugdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(NATURAL)
       !call VecCreateMPI(option%mycomm,unstructured_grid%nlmax* &
@@ -966,6 +995,12 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
       call VecSetSizes(vec,unstructured_grid%nlmax*ugdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
   end select
 
