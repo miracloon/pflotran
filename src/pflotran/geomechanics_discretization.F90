@@ -162,9 +162,10 @@ subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr, &
              'unstructured grids.'
             call PrintErrMsg(option)
 #endif
-      call GMCreateGMDM(geomech_discretization%grid, &
-                        dm_ptr%gmdm,ndof,option)
       call DMShellCreate(option%mycomm,dm_ptr%dm,ierr);CHKERRQ(ierr)
+      call DMSetFromOptions(dm_ptr%dm,ierr);CHKERRQ(ierr)
+      call GMCreateGMDM(geomech_discretization%grid, &
+                        dm_ptr%gmdm,ndof,option,dm_ptr%dm)
       call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm, &
                                              dm_ptr%gmdm%scatter_gtol, &
                                              ierr);CHKERRQ(ierr)
@@ -200,7 +201,7 @@ subroutine GeomechDiscretizationCreateVector(geomech_discretization, &
                                                    dm_index)
 
   call GMGridDMCreateVector(geomech_discretization%grid,dm_ptr%gmdm,vector, &
-                            vector_type,option)
+                            vector_type,option,dm_ptr%dm)
 
   call VecSet(vector,0.d0,ierr);CHKERRQ(ierr)
 

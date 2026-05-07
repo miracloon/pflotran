@@ -211,7 +211,7 @@ end function GMGridCreate
 ! date: 05/30/13
 !
 ! ************************************************************************** !
-subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
+subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option,dm)
 
   use Option_module
   use Utility_module, only: ReallocateArray
@@ -222,12 +222,14 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   type(option_type) :: option
   type(gmdm_type), pointer :: gmdm
   PetscInt :: ndof
+  DM, optional :: dm
   PetscInt, pointer :: int_ptr(:)
   PetscInt :: local_id, ghosted_id
   IS :: is_tmp, is_tmp_petsc, is_tmp_natural
   Vec :: vec_tmp
   PetscErrorCode :: ierr
   PetscInt, allocatable :: int_array(:), int_array2(:)
+  VecType :: dm_vec_type
 
 #if GEOMECH_DEBUG
   character(len=MAXSTRINGLENGTH) :: ndof_word, string
@@ -251,6 +253,12 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call VecSetSizes(gmdm%global_vec,geomech_grid%nlmax_node*ndof,PETSC_DECIDE, &
                    ierr);CHKERRQ(ierr)
   call VecSetBlockSize(gmdm%global_vec,ndof,ierr);CHKERRQ(ierr)
+  if (present(dm)) then
+    call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+    if (len_trim(dm_vec_type) > 0) then
+      call VecSetType(gmdm%global_vec,dm_vec_type,ierr);CHKERRQ(ierr)
+    endif
+  endif
   call VecSetFromOptions(gmdm%global_vec,ierr);CHKERRQ(ierr)
 
   ! create local vec
@@ -258,6 +266,12 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call VecSetSizes(gmdm%local_vec,geomech_grid%ngmax_node*ndof,PETSC_DECIDE, &
                    ierr);CHKERRQ(ierr)
   call VecSetBlockSize(gmdm%local_vec,ndof,ierr);CHKERRQ(ierr)
+  if (present(dm)) then
+    call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+    if (len_trim(dm_vec_type) > 0) then
+      call VecSetType(gmdm%local_vec,dm_vec_type,ierr);CHKERRQ(ierr)
+    endif
+  endif
   call VecSetFromOptions(gmdm%local_vec,ierr);CHKERRQ(ierr)
 
 
@@ -690,7 +704,7 @@ end subroutine GMGridDMCreateMatrix
 ! date: 06/04/13
 !
 ! ************************************************************************** !
-subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option)
+subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option,dm)
 
   use Option_module
 
@@ -701,7 +715,9 @@ subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option)
   type(option_type) :: option
   Vec :: vec
   PetscInt :: vec_type
+  DM, optional :: dm
   PetscErrorCode :: ierr
+  VecType :: dm_vec_type
 
   select case(vec_type)
     case(GLOBAL)
@@ -711,18 +727,36 @@ subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option)
       call VecSetLocalToGlobalMapping(vec,gmdm%mapping_ltog, &
                                       ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(LOCAL)
       call VecCreate(PETSC_COMM_SELF,vec,ierr);CHKERRQ(ierr)
       call VecSetSizes(vec,geomech_grid%ngmax_node*gmdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(NATURAL)
       call VecCreate(option%mycomm,vec,ierr);CHKERRQ(ierr)
       call VecSetSizes(vec,geomech_grid%nlmax_node*gmdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
   end select
 
@@ -736,7 +770,7 @@ end subroutine GMGridDMCreateVector
 ! date: 06/04/13
 !
 ! ************************************************************************** !
-subroutine GMGridDMCreateVectorElem(geomech_grid,gmdm,vec,vec_type,option)
+subroutine GMGridDMCreateVectorElem(geomech_grid,gmdm,vec,vec_type,option,dm)
 
   use Option_module
 
@@ -747,7 +781,9 @@ subroutine GMGridDMCreateVectorElem(geomech_grid,gmdm,vec,vec_type,option)
   type(option_type) :: option
   Vec :: vec
   PetscInt :: vec_type
+  DM, optional :: dm
   PetscErrorCode :: ierr
+  VecType :: dm_vec_type
 
   select case(vec_type)
     case(GLOBAL)
@@ -757,18 +793,36 @@ subroutine GMGridDMCreateVectorElem(geomech_grid,gmdm,vec,vec_type,option)
       call VecSetLocalToGlobalMapping(vec,gmdm%mapping_ltog_elem, &
                                       ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(LOCAL)
       call VecCreate(PETSC_COMM_SELF,vec,ierr);CHKERRQ(ierr)
       call VecSetSizes(vec,geomech_grid%nlmax_elem*gmdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(NATURAL)
       call VecCreate(option%mycomm,vec,ierr);CHKERRQ(ierr)
       call VecSetSizes(vec,geomech_grid%nlmax_elem*gmdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
+      if (present(dm)) then
+        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+        if (len_trim(dm_vec_type) > 0) then
+          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+        endif
+      endif
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
   end select
 
