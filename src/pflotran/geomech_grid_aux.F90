@@ -654,7 +654,10 @@ subroutine GMGridDMCreateMatrix(geomech_grid,gmdm,mat_type,J,option)
 
   ndof_local = geomech_grid%nlmax_node*gmdm%ndof
   select case(mat_type)
-    case(MATAIJ)
+    case(MATAIJ, MATAIJCUSPARSE, MATAIJHIPSPARSE, MATAIJKOKKOS, MATAIJVIENNACL)
+      ! Note: If additional AIJ matrix subtypes are added to PETSc, they must
+      !       be manually added, above. There is no good way to use helper
+      !       routines like PetscObjectBaseTypeCompare() from Fortran.
       d_nnz = d_nnz*gmdm%ndof
       o_nnz = o_nnz*gmdm%ndof
     case(MATBAIJ)
