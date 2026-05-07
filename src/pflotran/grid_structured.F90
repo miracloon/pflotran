@@ -235,6 +235,9 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
                     stencil_width,PETSC_NULL_INTEGER_ARRAY, &
                     PETSC_NULL_INTEGER_ARRAY,PETSC_NULL_INTEGER_ARRAY, &
                     da,ierr);CHKERRQ(ierr)
+  if (ndof > 1) then
+    call DMSetMatType(da,MATBAIJ,ierr);CHKERRQ(ierr)
+  endif
   if (present(options_prefix)) then
     call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
   endif

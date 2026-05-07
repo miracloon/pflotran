@@ -89,6 +89,7 @@ subroutine PMCSubsurfaceOSRTSetupSolvers(this)
   character(len=MAXSTRINGLENGTH) :: string
   class(pm_rt_type), pointer :: pm_rt
   PetscBool :: keep_non_zero_pattern
+  PetscBool :: dm_mat_type_found
   PetscErrorCode :: ierr
 
   option => this%option
@@ -115,8 +116,15 @@ subroutine PMCSubsurfaceOSRTSetupSolvers(this)
   call KSPSetOptionsPrefix(solver%ksp,"tran_",ierr);CHKERRQ(ierr)
   call SolverCheckCommandLine(solver)
 
-  solver%M_mat_type = MATAIJ
-  solver%Mpre_mat_type = MATAIJ
+  call PetscOptionsGetString(PETSC_NULL_OPTIONS,'tran_', &
+                             '-dm_mat_type',string, &
+                             dm_mat_type_found,ierr);CHKERRQ(ierr)
+  if (dm_mat_type_found) then
+    solver%Mpre_mat_type = trim(string)
+  else
+    solver%Mpre_mat_type = MATAIJ
+  endif
+  solver%M_mat_type = solver%Mpre_mat_type
   call DiscretizationCreateMatrix(pm_rt%realization%discretization, &
                                   ONEDOF, &
                                   solver%Mpre_mat_type, &

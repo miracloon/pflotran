@@ -768,6 +768,11 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option, &
 
   ! Create the DMShell and process -dm_vec_type
   call DMShellCreate(option%mycomm,da,ierr);CHKERRQ(ierr)
+  if (ndof > 1) then
+    call DMSetMatType(da,MATBAIJ,ierr);CHKERRQ(ierr)
+  else
+    call DMSetMatType(da,MATAIJ,ierr);CHKERRQ(ierr)
+  endif
   if (present(options_prefix)) then
     call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
   endif

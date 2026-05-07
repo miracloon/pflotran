@@ -106,6 +106,7 @@ subroutine PMCGeomechanicsSetupSolvers(this)
   type(solver_type), pointer :: solver
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: dm_mat_type_found
   PetscErrorCode :: ierr
 
 #ifdef DEBUG
@@ -132,8 +133,14 @@ subroutine PMCGeomechanicsSetupSolvers(this)
 
   if (Uninitialized(solver%Mpre_mat_type) .and. &
       Uninitialized(solver%M_mat_type)) then
-    ! Matrix types not specified, so set to default.
-    solver%Mpre_mat_type = MATBAIJ
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,'geomech_', &
+                               '-dm_mat_type',string, &
+                               dm_mat_type_found,ierr);CHKERRQ(ierr)
+    if (dm_mat_type_found) then
+      solver%Mpre_mat_type = trim(string)
+    else
+      solver%Mpre_mat_type = MATBAIJ
+    endif
     solver%M_mat_type = solver%Mpre_mat_type
   else if (Uninitialized(solver%Mpre_mat_type)) then
     if (solver%M_mat_type == MATMFFD) then

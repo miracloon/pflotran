@@ -779,6 +779,7 @@ subroutine PMERTSetupSolvers(this)
   type(option_type), pointer :: option
   type(solver_type), pointer :: solver
 
+  PetscBool :: dm_mat_type_found
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -796,9 +797,15 @@ subroutine PMERTSetupSolvers(this)
   ! if the user has not specified otherwise.
   if (Uninitialized(solver%Mpre_mat_type) .and. &
       Uninitialized(solver%M_mat_type)) then
-        ! Matrix types not specified, so set to default.
-    solver%M_mat_type = MATAIJ
-    solver%Mpre_mat_type = MATAIJ
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,'geop_', &
+                               '-dm_mat_type',string, &
+                               dm_mat_type_found,ierr);CHKERRQ(ierr)
+    if (dm_mat_type_found) then
+      solver%Mpre_mat_type = trim(string)
+    else
+      solver%Mpre_mat_type = MATAIJ
+    endif
+    solver%M_mat_type = solver%Mpre_mat_type
   else if (Uninitialized(solver%Mpre_mat_type)) then
     if (solver%M_mat_type == MATMFFD) then
       solver%Mpre_mat_type = MATAIJ

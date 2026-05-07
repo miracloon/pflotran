@@ -548,7 +548,8 @@ function UninitializedMatType(value)
   MatType :: value
   PetscBool :: UninitializedMatType
 
-  UninitializedMatType = (value == PETSC_NULL_CHARACTER)
+  UninitializedMatType = (value == PETSC_NULL_CHARACTER .or. &
+                          len_trim(value) == 0)
 
 end function UninitializedMatType
 

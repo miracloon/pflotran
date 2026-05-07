@@ -163,6 +163,11 @@ subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr, &
             call PrintErrMsg(option)
 #endif
       call DMShellCreate(option%mycomm,dm_ptr%dm,ierr);CHKERRQ(ierr)
+      if (ndof > 1) then
+        call DMSetMatType(dm_ptr%dm,MATBAIJ,ierr);CHKERRQ(ierr)
+      else
+        call DMSetMatType(dm_ptr%dm,MATAIJ,ierr);CHKERRQ(ierr)
+      endif
       call DMSetOptionsPrefix(dm_ptr%dm,"geomech_",ierr);CHKERRQ(ierr)
       call DMSetFromOptions(dm_ptr%dm,ierr);CHKERRQ(ierr)
       call GMCreateGMDM(geomech_discretization%grid, &
