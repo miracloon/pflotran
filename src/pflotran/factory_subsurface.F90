@@ -393,6 +393,7 @@ subroutine FactorySubsurfaceInitSimulation(simulation)
   select case(option%geomechanics%geophysics_coupling)
     case(GEOMECH_ERT_COUPLING)
       call RealizationRegisterParameter(realization,'geomechanics_stress')
+      call RealizationRegisterParameter(realization,'geomechanics_stress_0')
       call RealizationRegisterParameter(realization,'geomechanics_strain')
   end select
 

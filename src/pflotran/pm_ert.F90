@@ -890,6 +890,7 @@ subroutine PMERTPreSolve(this)
   PetscInt :: empirical_law
   PetscInt :: temp_dependence
   PetscInt :: parameter_index
+  PetscInt :: parameter_0_index
   PetscReal :: a,m,n,cond_w,cond_s,cond_c,Vc,cond  ! variables for Archie's law
   PetscReal :: temp, temp_ref, temp_coeff ! variables for temperature dependence
   PetscReal :: scaled_temp_diff
@@ -980,6 +981,15 @@ subroutine PMERTPreSolve(this)
     endif
   endif
 
+  ! Hoist the parameter id lookups out of the cell loop
+  parameter_index = UNINITIALIZED_INTEGER
+  parameter_0_index = UNINITIALIZED_INTEGER
+  if (option%geomechanics%geophysics_coupling == GEOMECH_ERT_COUPLING) then
+    parameter_index = ParameterGetIDFromName('geomechanics_stress',option)
+    parameter_0_index = ParameterGetIDFromName('geomechanics_stress_0', &
+                                                 option)
+  endif
+
   do ghosted_id = 1, grid%ngmax
     local_id = grid%nG2L(ghosted_id)
     dcond_dsat = 0.d0
@@ -1039,12 +1049,16 @@ subroutine PMERTPreSolve(this)
                                       MATERIAL_ELECTRICAL_CONDUCTIVITY)
     endif
 
+    drho_geomech = 0.d0
     if (option%geomechanics%geophysics_coupling == GEOMECH_ERT_COUPLING) then
-      parameter_index = ParameterGetIDFromName('geomechanics_stress',option)
-      dstress = patch%aux% &
-              Global%auxvars(ghosted_id)%parameters(parameter_index)
-      drho_geomech = 0.d0
-      ! Brace's regression equation rho = 21054*pressure (kbar) + 3457.9
+      ! Brace's regression equation rho = 21054*pressure (kbar) + 3457.9 is
+      ! expressed in terms of a compression-positive effective pressure, and is
+      ! relative to the initial state.
+      dstress = -(patch%aux% &
+                    Global%auxvars(ghosted_id)%parameters(parameter_index) - &
+                  patch%aux% &
+                    Global%auxvars(ghosted_id)%parameters(parameter_0_index))
+      ! dstress is in Pa; 1 kbar = 1.0d8 Pa
       drho_geomech = this%brace_stress_resistivity_slope * dstress * 1.0d-8
     endif
 
