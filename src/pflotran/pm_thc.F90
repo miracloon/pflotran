@@ -231,6 +231,20 @@ subroutine PMTHCReadSimOptionsBlock(this,input)
             call InputKeywordUnrecognized(input,word, &
                    'THC Mode,ENERGY_FORMULATION',option)
         end select
+      case('ADVECTIVE_DENSITY')
+        call InputReadCard(input,option,word)
+        call InputErrorMsg(input,option,keyword,error_string)
+        call StringToUpper(word)
+        select case(trim(word))
+          case('UPWIND')
+            thc_advective_density_mode = THC_ADVECTIVE_DENSITY_UPWIND
+          case('TH_COMPATIBLE')
+            thc_advective_density_mode = &
+              THC_ADVECTIVE_DENSITY_TH_COMPATIBLE
+          case default
+            call InputKeywordUnrecognized(input,word, &
+                   'THC Mode,ADVECTIVE_DENSITY',option)
+        end select
       case('DEBUG_CELL_ID')
         call InputReadInt(input,option,thc_debug_cell_id)
         call InputErrorMsg(input,option,keyword,error_string)

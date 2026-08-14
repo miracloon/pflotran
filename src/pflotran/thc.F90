@@ -46,6 +46,7 @@ subroutine THCSetup(realization)
   use Material_Aux_module
   use Output_Aux_module
   use Characteristic_Curves_module
+  use Characteristic_Curves_Thermal_module
   use Matrix_Zeroing_module
   use EOS_Water_module, only : EOSWaterSetViscosity
 
@@ -64,7 +65,7 @@ subroutine THCSetup(realization)
   PetscInt :: ghosted_id, iconn, sum_connection, local_id
   PetscBool :: error_found
   PetscInt :: flag(10)
-  PetscInt :: temp_int, idof, imat
+  PetscInt :: temp_int, idof, imat, icct
   PetscBool, allocatable :: dof_is_active(:)
   PetscErrorCode :: ierr
                                                 ! extra index for derivatives
@@ -132,6 +133,21 @@ subroutine THCSetup(realization)
   allocate(thc_parameter%dencpr(temp_int))
   allocate(thc_parameter%ckdry(temp_int))
   allocate(thc_parameter%ckwet(temp_int))
+  ! per-material THERMAL_CHARACTERISTIC_CURVES, when supplied.  This is the
+  ! only conductivity path that returns d(kappa_eff)/dT (POWER,
+  ! CUBIC_POLYNOMIAL, LINEAR_RESISTIVITY); DEFAULT reproduces ckdry/ckwet.
+  if (associated(patch%char_curves_thermal_array)) then
+    allocate(thc_parameter%thermal_cc(temp_int))
+    do imat = 1, temp_int
+      nullify(thc_parameter%thermal_cc(imat)%ptr)
+      icct = patch%material_property_array(imat)%ptr% &
+               thermal_conductivity_function_id
+      if (Initialized(icct)) then
+        thc_parameter%thermal_cc(imat)%ptr => &
+          patch%char_curves_thermal_array(icct)%ptr
+      endif
+    enddo
+  endif
   do imat = 1, temp_int
     ! solid volumetric heat capacity rho_s * c_s
     if (Initialized(patch%material_property_array(imat)%ptr%rock_density) .and. &
@@ -230,6 +246,8 @@ subroutine THCSetup(realization)
     if (cur_fluid_property%phase_id == LIQUID_PHASE) then
       patch%aux%THC%thc_parameter%diffusion_coef = &
         cur_fluid_property%diffusion_coefficient
+      patch%aux%THC%thc_parameter%diffusion_activation_energy = &
+        cur_fluid_property%diffusion_activation_energy
       exit
     endif
     cur_fluid_property => cur_fluid_property%next
@@ -1103,6 +1121,7 @@ subroutine THCResidual(snes,xx,r,A,realization,debug,ierr)
       endif
       Res = -Res
       call PetUtilVecSVBL(r_p,local_id,Res,ndof,PETSC_FALSE)
+      Jdn = -Jdn
       call PetUtilMatSVBL(A,ghosted_id,ghosted_id,Jdn,ndof)
     enddo
     source_sink => source_sink%next

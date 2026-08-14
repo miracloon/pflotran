@@ -1,0 +1,209 @@
+#Description: 1D thermal advection with a solute, exercising the THC
+#             capabilities that no other deck covers:
+#               - THERMAL_CHARACTERISTIC_CURVES (per-material thermal curves)
+#               - POWER conductivity, i.e. kappa_eff(T) and d(kappa_eff)/dT
+#               - ANISOTROPY_RATIO_*, projected onto each connection
+#               - FLUID_PROPERTY DIFFUSION_COEFFICIENT (molecular diffusion)
+#               - DIFFUSION_ACTIVATION_ENERGY (Arrhenius scaling of D)
+#             A 20 -> 80 C gradient drives kappa(T) and the Arrhenius scaling;
+#             a 0 -> 1e-3 M inlet solute gives the diffusive term a gradient.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE THC
+      OPTIONS
+        SPECIFIC_HEAT_LIQUID 4184.d0 J/kg-C
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== numerical methods ================================
+NUMERICAL_METHODS FLOW
+
+  NEWTON_SOLVER
+    MAX_ALLOW_LIQ_PRES_CHANGE_NI 1.d0
+  /
+
+  LINEAR_SOLVER
+    SOLVER DIRECT
+  /
+
+END
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 5
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 100 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+# DIFFUSION_ACTIVATION_ENERGY enables the Arrhenius scaling of the molecular
+# diffusion coefficient; without it D stays constant.
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+  DIFFUSION_ACTIVATION_ENERGY 15000.d0
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0
+  SPECIFIC_HEAT 800.d0
+  THERMAL_CHARACTERISTIC_CURVES cct_power
+  PERMEABILITY
+    PERM_ISO 1.d-10
+  /
+  CHARACTERISTIC_CURVES cc1
+END
+
+#=========================== thermal characteristic curves ====================
+# POWER gives kappa = kappa_0 * (T_K/300)^gamma, the only path supplying
+# d(kappa_eff)/dT.  The X ratio is active because x is the conduction
+# direction; the Z ratio is the "kill vertical conduction" case, inert on this
+# 1D mesh but confirming the ratios are accepted and projected.
+THERMAL_CHARACTERISTIC_CURVES cct_power
+  THERMAL_CONDUCTIVITY_FUNCTION POWER
+    THERMAL_CONDUCTIVITY_DRY 2.0062209149293d0 W/m-C
+    THERMAL_CONDUCTIVITY_WET 2.0062209149293d0 W/m-C
+    ANISOTROPY_RATIO_X 0.5d0
+    ANISOTROPY_RATIO_Y 1.d0
+    ANISOTROPY_RATIO_Z 1.d-100
+    EXPONENT -1.18d0
+  /
+/
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIMES d 1.0 2.0 3.0
+  FORMAT TECPLOT POINT
+  VARIABLES
+    LIQUID_PRESSURE
+    TEMPERATURE
+    LIQUID_DENSITY
+    LIQUID_VISCOSITY
+    SOLUTE_CONCENTRATION
+    THERMAL_CONDUCTIVITY
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 4.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.d0 h
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    10.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+# Initially cold, solute-free, saturated column at uniform pressure
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  LIQUID_PRESSURE 101325.d0
+  TEMPERATURE 20.d0
+  CONCENTRATION 0.d0
+END
+
+# Hot, solute-bearing water injected at a fixed Darcy flux
+FLOW_CONDITION inlet
+  TYPE
+    LIQUID_FLUX NEUMANN
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  LIQUID_FLUX 1.d0 m/d
+  TEMPERATURE 80.d0
+  CONCENTRATION 1.d-3
+END
+
+# Outlet pressure held; outgoing temperature/concentration advected out
+FLOW_CONDITION outlet
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    TEMPERATURE ZERO_GRADIENT
+    CONCENTRATION ZERO_GRADIENT
+  /
+  LIQUID_PRESSURE 101325.d0
+  TEMPERATURE 20.d0
+  CONCENTRATION 0.d0
+END
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION inlet
+  FLOW_CONDITION inlet
+  REGION west
+END
+
+BOUNDARY_CONDITION outlet
+  FLOW_CONDITION outlet
+  REGION east
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+
+END_SUBSURFACE

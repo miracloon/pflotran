@@ -1,0 +1,153 @@
+#Description: Variable-density hydrostatic THC column on a nonuniform grid.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE THC
+      OPTIONS
+        ADVECTIVE_DENSITY TH_COMPATIBLE
+        ENERGY_FORMULATION FULL_EOS
+        LIQUID_HEAT_CAPACITY 4184.d0 J/kg-C
+        SOLID_HEAT_CAPACITY 800.d0 J/kg-C
+        SOLID_DENSITY 2650.d0 kg/m^3
+        THERMAL_CONDUCTIVITY_SOLID 3.d0 W/m-C
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== numerical methods ================================
+NUMERICAL_METHODS FLOW
+  LINEAR_SOLVER
+    SOLVER DIRECT
+  /
+END
+
+#=========================== regression =======================================
+REGRESSION
+  CELL_IDS
+    1
+    2
+    3
+    4
+    5
+    6
+  /
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 1 1 6
+  DXYZ
+    1.d0
+    1.d0
+    5.d0 10.d0 15.d0 20.d0 20.d0 30.d0
+  /
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  CHARACTERISTIC_CURVES cc1
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIMES y 1.0 10.0
+  FORMAT TECPLOT POINT
+  VELOCITY_AT_CENTER
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_DENSITY
+    LIQUID_VISCOSITY
+  /  
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 100.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 d
+  MAXIMUM_TIMESTEP_SIZE 5.d0 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 100.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 100.d0
+    1.d0 1.d0 100.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 0.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION hydrostatic
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  DATUM 0.d0 0.d0 100.d0
+  LIQUID_PRESSURE 101325.d0
+  TEMPERATURE 25.d0
+  CONCENTRATION 0.d0
+END
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION hydrostatic
+  REGION all
+END
+
+BOUNDARY_CONDITION top
+  FLOW_CONDITION hydrostatic
+  REGION top
+END
+
+BOUNDARY_CONDITION bottom
+  FLOW_CONDITION hydrostatic
+  REGION bottom
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE
