@@ -146,6 +146,7 @@ module THC_Aux_module
     PetscReal, pointer :: dencpr(:)  ! rho_s * c_s [J/(m^3.K)]
     PetscReal, pointer :: ckdry(:)   ! bulk dry  thermal conductivity [W/(m.K)]
     PetscReal, pointer :: ckwet(:)   ! bulk wet  thermal conductivity [W/(m.K)]
+    PetscReal, pointer :: alpha_l(:) ! longitudinal dispersivity [m]
     ! per-material THERMAL_CHARACTERISTIC_CURVES; takes precedence over
     ! ckdry/ckwet and is the only path supplying d(kappa_eff)/dT
     type(cc_thermal_ptr_type), pointer :: thermal_cc(:)
@@ -233,6 +234,7 @@ function THCAuxCreate(option)
   nullify(aux%thc_parameter%dencpr)
   nullify(aux%thc_parameter%ckdry)
   nullify(aux%thc_parameter%ckwet)
+  nullify(aux%thc_parameter%alpha_l)
   nullify(aux%thc_parameter%thermal_cc)
 
   THCAuxCreate => aux
@@ -388,6 +390,7 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
 
   PetscInt :: imat
   PetscReal :: arrhenius_scale
+  PetscReal :: pw, dpw_dp
   PetscReal :: dummy_dist(-1:3)
   PetscBool :: saturated
   PetscReal :: dkr_dsat
@@ -465,6 +468,10 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! above is due to SaturationFunctionCompute switching a cell to
   ! saturated to prevent unstable (potentially infinite) derivatives when
   ! capillary pressure is very small
+  ! EOS pressure: reference pressure when unsaturated, cell pressure when
+  ! saturated (matches TH/RICHARDS); dpw_dp chains the P derivatives
+  pw = option%flow%reference_pressure
+  dpw_dp = 0.d0
   if (saturated) then
     thc_auxvar%pc = 0.d0
     thc_auxvar%sat = 1.d0
@@ -473,6 +480,8 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
     thc_auxvar%dkr_dp = 0.d0
     thc_auxvar%effective_saturation = 1.d0
     thc_auxvar%deffsat_dp = 0.d0
+    pw = max(thc_auxvar%pres,pw)
+    dpw_dp = 1.d0
   endif
 
   if (option%iflag /= THC_UPDATE_FOR_DERIVATIVE) then
@@ -486,7 +495,7 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! Step 5: liquid density rho_l(P,T,C) and its derivatives
   ! --------------------------------------------------------------------------
   ierr = 0
-  call THCDensityAndDerivs(thc_auxvar%temp,thc_auxvar%pres, &
+  call THCDensityAndDerivs(thc_auxvar%temp,pw, &
                                thc_auxvar%conc,thc_auxvar%den_kg, &
                                thc_auxvar%den_kmol,thc_auxvar%dden_dp, &
                                thc_auxvar%dden_dT,thc_auxvar%dden_dC, &
@@ -500,7 +509,7 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! --------------------------------------------------------------------------
   ! Step 6: liquid viscosity mu_l(T,C) and its derivatives
   ! --------------------------------------------------------------------------
-  call THCViscosityAndDerivs(thc_auxvar%temp,thc_auxvar%pres, &
+  call THCViscosityAndDerivs(thc_auxvar%temp,pw, &
                                  thc_auxvar%conc,thc_auxvar%den_kg, &
                                  thc_auxvar%vis, &
                                  thc_auxvar%dvis_dT,thc_auxvar%dvis_dC, &
@@ -545,6 +554,10 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
                                     thc_specific_heat_solid
   endif
 
+  thc_auxvar%dden_dp = thc_auxvar%dden_dp * dpw_dp
+  thc_auxvar%dh_dP = thc_auxvar%dh_dP * dpw_dp
+  thc_auxvar%du_dP = thc_auxvar%du_dP * dpw_dp
+
   ! molecular diffusion [m^2/s] from FLUID_PROPERTY DIFFUSION_COEFFICIENT,
   ! optionally scaled by Arrhenius(AE,T,25C) when DIFFUSION_ACTIVATION_ENERGY
   ! is supplied (opt-in, as in RT/NWT).  No concentration dependence.
@@ -567,7 +580,7 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! rows are scaled by option%scale in the kernels.
   ! Liquid enthalpy h(P,T) from EOS water; internal energy u = h - P/rho.
   if (thc_energy_mode == THC_ENERGY_FULL_EOS) then
-    call THCEnergyEOS(thc_auxvar,option)
+    call THCEnergyEOS(thc_auxvar,pw,option)
   else
     thc_auxvar%u = 0.d0
     thc_auxvar%h = 0.d0
@@ -674,7 +687,7 @@ end subroutine THCThermalCondEval
 
 ! ************************************************************************** !
 
-subroutine THCEnergyEOS(thc_auxvar,option)
+subroutine THCEnergyEOS(thc_auxvar,pw,option)
   !
   ! Computes mass-specific liquid enthalpy h(P,T) and internal energy u(P,T)
   ! and their derivatives from the water EOS, for the FULL_EOS energy
@@ -694,6 +707,7 @@ subroutine THCEnergyEOS(thc_auxvar,option)
   implicit none
 
   type(thc_auxvar_type) :: thc_auxvar
+  PetscReal :: pw
   type(option_type) :: option
 
   PetscReal :: hw, hw_dp, hw_dT       ! molar enthalpy [J/kmol] and derivs
@@ -701,7 +715,7 @@ subroutine THCEnergyEOS(thc_auxvar,option)
   PetscErrorCode :: ierr
 
   ierr = 0
-  P = thc_auxvar%pres
+  P = pw
   den_kg = thc_auxvar%den_kg
 
   ! EOS water enthalpy: hw [J/kmol], hw_dp [J/(kmol.Pa)], hw_dT [J/(kmol.K)]
@@ -771,7 +785,9 @@ subroutine THCAuxVarPerturb(x,thc_auxvar,global_auxvar, &
   ! THC_UPDATE_FOR_DERIVATIVE indicates call from perturbation
   option%iflag = THC_UPDATE_FOR_DERIVATIVE
   do idof = 1, option%nflowdof
-    pert = x(idof)*thc_rel_pert+thc_min_pert(idof)
+    ! magnitude-based so the terms cannot cancel at negative x
+    pert = dabs(x(idof))*thc_rel_pert+thc_min_pert(idof)
+    if (x(idof) < 0.d0) pert = -pert
     thc_auxvar(idof)%pert = pert
     x_pert(1:option%nflowdof) = x
     x_pert(idof) = x(idof) + pert
@@ -1122,6 +1138,7 @@ subroutine THCAuxDestroy(aux)
     call DeallocateArray(aux%thc_parameter%dencpr)
     call DeallocateArray(aux%thc_parameter%ckdry)
     call DeallocateArray(aux%thc_parameter%ckwet)
+    call DeallocateArray(aux%thc_parameter%alpha_l)
     if (associated(aux%thc_parameter%thermal_cc)) then
       deallocate(aux%thc_parameter%thermal_cc)
       nullify(aux%thc_parameter%thermal_cc)

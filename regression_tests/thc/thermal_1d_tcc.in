@@ -1,12 +1,5 @@
 #Description: 1D thermal advection with a solute, exercising the THC
 #             capabilities that no other deck covers:
-#               - THERMAL_CHARACTERISTIC_CURVES (per-material thermal curves)
-#               - POWER conductivity, i.e. kappa_eff(T) and d(kappa_eff)/dT
-#               - ANISOTROPY_RATIO_*, projected onto each connection
-#               - FLUID_PROPERTY DIFFUSION_COEFFICIENT (molecular diffusion)
-#               - DIFFUSION_ACTIVATION_ENERGY (Arrhenius scaling of D)
-#             A 20 -> 80 C gradient drives kappa(T) and the Arrhenius scaling;
-#             a 0 -> 1e-3 M inlet solute gives the diffusive term a gradient.
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
@@ -171,15 +164,17 @@ FLOW_CONDITION inlet
   CONCENTRATION 1.d-3
 END
 
-# Outlet pressure held; outgoing temperature/concentration advected out
+# Outlet pressure held; convective (Robin) heat exchange with 20 C ambient,
+# outgoing concentration advected out
 FLOW_CONDITION outlet
   TYPE
     LIQUID_PRESSURE DIRICHLET
-    TEMPERATURE ZERO_GRADIENT
+    TEMPERATURE CONVECTIVE
     CONCENTRATION ZERO_GRADIENT
   /
   LIQUID_PRESSURE 101325.d0
   TEMPERATURE 20.d0
+  HEAT_TRANSFER_COEFFICIENT 50.d0
   CONCENTRATION 0.d0
 END
 

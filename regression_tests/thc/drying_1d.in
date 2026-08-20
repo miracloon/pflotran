@@ -1,0 +1,182 @@
+#Description: 1D near-dry column with zero residual saturation.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE THC
+      OPTIONS
+        LIQUID_HEAT_CAPACITY 4184.d0 J/kg-C
+        SOLID_HEAT_CAPACITY 800.d0 J/kg-C
+        SOLID_DENSITY 2650.d0 kg/m^3
+        THERMAL_CONDUCTIVITY_SOLID 3.d0 W/m-C
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== numerical methods ================================
+NUMERICAL_METHODS FLOW
+  NEWTON_SOLVER
+    MAX_ALLOW_LIQ_PRES_CHANGE_NI 1.d0
+  /
+  LINEAR_SOLVER
+    SOLVER DIRECT
+  /
+END
+
+#=========================== regression =======================================
+REGRESSION
+  CELL_IDS
+    1
+    2
+    3
+    5
+    10
+  /
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 1 1 10
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 10.d0
+  /
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  PERMEABILITY
+    PERM_ISO 1.d-10
+  /
+  CHARACTERISTIC_CURVES cc1
+END
+
+#=========================== characteristic curves ============================
+# zero residual saturation so cells can dry into the near-dry band
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIMES d 0.5
+  FORMAT TECPLOT POINT
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    LIQUID_RELATIVE_PERMEABILITY
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 1.d0 h
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 10.d0
+  /
+END
+
+REGION lower_half
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 5.d0
+  /
+END
+
+REGION upper_half
+  COORDINATES
+    0.d0 0.d0 5.d0
+    1.d0 1.d0 10.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 0.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+# lower half sits inside the near-dry band (mobility < 1e-8)
+FLOW_CONDITION initial_dry
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  LIQUID_PRESSURE -2.5d6
+  TEMPERATURE 25.d0
+  CONCENTRATION 0.d0
+END
+
+# upper half sits just above the band and drains downward
+FLOW_CONDITION initial_moist
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  LIQUID_PRESSURE -1.d6
+  TEMPERATURE 25.d0
+  CONCENTRATION 0.d0
+END
+
+# strong suction dries the base of the column
+FLOW_CONDITION suction
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    TEMPERATURE DIRICHLET
+    CONCENTRATION ZERO_GRADIENT
+  /
+  LIQUID_PRESSURE -3.d6
+  TEMPERATURE 25.d0
+  CONCENTRATION 0.d0
+END
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION lower
+  FLOW_CONDITION initial_dry
+  REGION lower_half
+END
+
+INITIAL_CONDITION upper
+  FLOW_CONDITION initial_moist
+  REGION upper_half
+END
+
+BOUNDARY_CONDITION bottom
+  FLOW_CONDITION suction
+  REGION bottom
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE

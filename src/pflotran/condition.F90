@@ -1312,6 +1312,9 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = DIRICHLET_BC
             case('NEUMANN')
               sub_condition_ptr%itype = NEUMANN_BC
+            case('CONVECTIVE')
+              ! Robin/third-kind: flux = h*(T_ext - T); THC energy BC
+              sub_condition_ptr%itype = CONVECTIVE_BC
             case('MASS_RATE')
               sub_condition_ptr%itype = MASS_RATE_SS
               rate_unit_string = 'kg/sec'
@@ -1536,6 +1539,10 @@ subroutine FlowConditionRead(condition,input,option)
                                  saturation%units,internal_units)
       case('CONDUCTANCE')
         call InputReadDouble(input,option,pressure%aux_real(1))
+        call InputErrorMsg(input,option,word,'CONDITION')
+      case('HEAT_TRANSFER_COEFFICIENT')
+        ! [W/(m^2.K)] for the TEMPERATURE CONVECTIVE (Robin) condition
+        call InputReadDouble(input,option,temperature%aux_real(1))
         call InputErrorMsg(input,option,word,'CONDITION')
       case('THRESHOLD_PRESSURE')
         string = word

@@ -127,6 +127,19 @@ subroutine THCSetup(realization)
   ! dry/wet interpolation when both ckdry/ckwet are set, otherwise the
   ! grain-Somerton model from the global thc_kappa_solid.
   ! --------------------------------------------------------------------------
+  ! longitudinal dispersivity; transverse dispersion is not implemented
+  allocate(thc_parameter%alpha_l(temp_int))
+  do imat = 1, temp_int
+    if (maxval(patch%material_property_array(imat)%ptr% &
+                 dispersivity(2:3)) > 0.d0) then
+      option%io_buffer = 'Transverse dispersion is not implemented in &
+        &MODE THC; only LONGITUDINAL_DISPERSIVITY is supported (material "' // &
+        trim(patch%material_property_array(imat)%ptr%name) // '").'
+      call PrintErrMsg(option)
+    endif
+    thc_parameter%alpha_l(imat) = &
+      patch%material_property_array(imat)%ptr%dispersivity(1)
+  enddo
   allocate(thc_parameter%dencpr(temp_int))
   allocate(thc_parameter%ckdry(temp_int))
   allocate(thc_parameter%ckwet(temp_int))
@@ -644,8 +657,8 @@ subroutine THCUpdateAuxVars(realization)
              HYDROSTATIC_BC,HYDROSTATIC_SEEPAGE_BC,HYDROSTATIC_CONDUCTANCE_BC)
           xxbc(thc_temperature_dof) = &
             boundary_condition%flow_aux_real_var(energy_index,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          ! prescribed-heat-flux / zero-gradient: ghost carries the interior T
+        case(NEUMANN_BC,ZERO_GRADIENT_BC,CONVECTIVE_BC)
+          ! prescribed-flux / zero-gradient / Robin: ghost carries interior T
           xxbc(thc_temperature_dof) = &
             xx_loc_p(ghosted_offset+thc_temperature_dof)
         case default
