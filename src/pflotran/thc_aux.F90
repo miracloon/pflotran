@@ -501,7 +501,8 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! Step 6: liquid viscosity mu_l(T,C) and its derivatives
   ! --------------------------------------------------------------------------
   call THCViscosityAndDerivs(thc_auxvar%temp,thc_auxvar%pres, &
-                                 thc_auxvar%conc,thc_auxvar%vis, &
+                                 thc_auxvar%conc,thc_auxvar%den_kg, &
+                                 thc_auxvar%vis, &
                                  thc_auxvar%dvis_dT,thc_auxvar%dvis_dC, &
                                  ierr)
   if (ierr /= 0) then

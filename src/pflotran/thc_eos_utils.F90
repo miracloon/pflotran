@@ -28,6 +28,9 @@ module THC_EOS_Utils_module
   use PFLOTRAN_Constants_module, only : FMWH2O
   use EOS_Water_module, only : EOSWaterDensityExt, &
                                EOSWaterViscosityExt, &
+                               EOSWaterDensity, &
+                               EOSWaterViscosity, &
+                               EOSWaterDensityIsBrine, &
                                EOSWaterSaturationPressure
 
   implicit none
@@ -120,12 +123,28 @@ subroutine THCDensityAndDerivs(T, P, C, den_kg, den_kmol, &
   PetscReal :: dw_pert, dwmol_pert, dwp_pert, dwt_pert
   PetscReal :: s, ds_dC, dden_ds
 
-  ! C [mol/L] -> salinity mass fraction s [kg/kg] (reference-density basis).
+  if (.not.EOSWaterDensityIsBrine()) then
+    ! Pure-water correlation selected (IF97, IFC67, ...)
+    call EOSWaterDensity(T, P, dw, dwmol, dwp, dwt, ierr)
+    den_kg   = dw
+    den_kmol = dwmol
+    dden_dp  = dwp * FMWH2O
+    dden_dT  = dwt * FMWH2O
+    dden_dC  = 0.d0
+    return
+  endif
+
+  ! C [mol/L] -> salinity mass fraction s [kg/kg]; seed with the reference
+  ! density, then one Picard pass so s is consistent with the EOS density
   call THCConcToMassFraction(C, thc_density_reference, &
                                  thc_molar_mass_solute, s, ds_dC)
   aux1(1) = s
+  call EOSWaterDensityExt(T, P, aux1, dw, dwmol, dwp, dwt, ierr)
+  call THCConcToMassFraction(C, dw, thc_molar_mass_solute, s, ds_dC)
+  aux1(1) = s
 
   ! Density with analytic P,T derivatives (molar-density basis).
+  ! ds_dC neglects the implicit d(rho)/dC term (second order in s).
   call EOSWaterDensityExt(T, P, aux1, dw, dwmol, dwp, dwt, ierr)
   den_kg   = dw
   den_kmol = dwmol
@@ -144,7 +163,8 @@ subroutine THCDensityAndDerivs(T, P, C, den_kg, den_kmol, &
 end subroutine THCDensityAndDerivs
 
 ! ****************************************************************************
-subroutine THCViscosityAndDerivs(T, P, C, vis, dvis_dT, dvis_dC, ierr)
+subroutine THCViscosityAndDerivs(T, P, C, den_kg, vis, dvis_dT, dvis_dC, &
+                                     ierr)
   !
   ! Liquid dynamic viscosity mu_l(T,C) and the derivatives needed for the
   ! THC Jacobian, via EOSWaterViscosityExt.
@@ -165,6 +185,7 @@ subroutine THCViscosityAndDerivs(T, P, C, vis, dvis_dT, dvis_dC, ierr)
   PetscReal,      intent(in)    :: T        ! temperature [C]
   PetscReal,      intent(in)    :: P        ! pressure [Pa]
   PetscReal,      intent(in)    :: C        ! concentration [mol/L]
+  PetscReal,      intent(in)    :: den_kg   ! rho_l [kg/m^3]
   PetscReal,      intent(out)   :: vis      ! mu_l [Pa.s]
   PetscReal,      intent(out)   :: dvis_dT  ! d(mu_l)/dT [Pa.s/C]
   PetscReal,      intent(out)   :: dvis_dC  ! d(mu_l)/dC [Pa.s/(mol/L)]
@@ -176,13 +197,21 @@ subroutine THCViscosityAndDerivs(T, P, C, vis, dvis_dT, dvis_dC, ierr)
   PetscReal :: VW_pert, dVW_dT_pert, dVW_dP_pert
   PetscReal :: s, ds_dC, dvis_ds
 
-  ! C [mol/L] -> salinity mass fraction s [kg/kg] (reference-density basis).
-  call THCConcToMassFraction(C, thc_density_reference, &
-                                 thc_molar_mass_solute, s, ds_dC)
-  aux1(1) = s
-
   ! Saturation pressure (interface input; unused by Batzle & Wang Eq 32).
   call EOSWaterSaturationPressure(T, PS, dPS_dT, ierr)
+
+  if (.not.EOSWaterDensityIsBrine()) then
+    ! Pure-water correlation
+    call EOSWaterViscosity(T, P, PS, dPS_dT, VW, dVW_dT, dVW_dP, ierr)
+    vis     = VW
+    dvis_dT = dVW_dT
+    dvis_dC = 0.d0
+    return
+  endif
+
+  ! C [mol/L] -> salinity mass fraction s [kg/kg] using the current density
+  call THCConcToMassFraction(C, den_kg, thc_molar_mass_solute, s, ds_dC)
+  aux1(1) = s
 
   ! Viscosity with analytic T derivative (dVW_dP is hard-set to 0 by the EOS).
   call EOSWaterViscosityExt(T, P, PS, dPS_dT, aux1, VW, dVW_dT, dVW_dP, &

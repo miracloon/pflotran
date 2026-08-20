@@ -67,6 +67,7 @@ module EOS_Water_module
   procedure(EOSWaterViscosityDummy), pointer :: EOSWaterViscosityPtr => null()
   procedure(EOSWaterSatPressDummy), pointer :: &
     EOSWaterSaturationPressurePtr => null()
+  PetscBool :: water_density_is_brine = PETSC_FALSE
   procedure(EOSWaterDensityDummy), pointer :: EOSWaterDensityPtr => null()
   procedure(EOSWaterEnthalpyDummy), pointer :: EOSWaterEnthalpyPtr => null()
   procedure(EOSWaterSteamDenEnthDummy), pointer :: &
@@ -288,6 +289,7 @@ module EOS_Water_module
   public :: EOSWaterSetDensity, &
             EOSWaterSetEnthalpy, &
             EOSWaterSetViscosity, &
+            EOSWaterDensityIsBrine, &
             EOSWaterSetSaturationPressure, &
             EOSWaterSetSteamDensity, &
             EOSWaterSetSteamEnthalpy, &
@@ -452,12 +454,29 @@ end subroutine EOSWaterVerify
 
 ! ************************************************************************** !
 
+function EOSWaterDensityIsBrine()
+  !
+  ! Reports whether the selected water density correlation accepts a salinity
+  ! argument
+  !
+  implicit none
+
+  PetscBool :: EOSWaterDensityIsBrine
+
+  EOSWaterDensityIsBrine = water_density_is_brine
+
+end function EOSWaterDensityIsBrine
+
+! ************************************************************************** !
+
 subroutine EOSWaterSetDensity(keyword,aux)
 
   implicit none
 
   character(len=*) :: keyword
   PetscReal, optional :: aux(*)
+
+  water_density_is_brine = PETSC_FALSE
 
   select case(keyword)
     case('CONSTANT')
@@ -519,10 +538,13 @@ subroutine EOSWaterSetDensity(keyword,aux)
     case('BATZLE_AND_WANG')
       EOSWaterDensityPtr => EOSWaterDensityBatzleAndWang
       EOSWaterDensityExtPtr => EOSWaterDensityBatzleAndWangExt
+      water_density_is_brine = PETSC_TRUE
     case('SPARROW')
       EOSWaterDensityExtPtr => EOSWaterDensitySparrowExt
+      water_density_is_brine = PETSC_TRUE
     case('DRIESNER')
       EOSWaterDensityExtPtr => EOSWaterDensityDriesnerExt
+      water_density_is_brine = PETSC_TRUE
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
         '" in EOSWaterSetDensity().'

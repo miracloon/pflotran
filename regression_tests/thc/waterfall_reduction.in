@@ -18,6 +18,12 @@ END
 
 SUBSURFACE
 
+#=========================== equations of state ===============================
+EOS WATER
+  DENSITY DRIESNER
+  VISCOSITY BATZLE_AND_WANG
+END
+
 #=========================== numerical methods ================================
 NUMERICAL_METHODS FLOW
 
