@@ -195,6 +195,12 @@ subroutine THCAccumulation(thc_auxvar,global_auxvar,material_auxvar, &
 
   endif
 
+  ! energy row carried in option%scale units (MJ by default), as in TH
+  Res(thc_temperature_dof) = Res(thc_temperature_dof) * option%scale
+  if (calculate_derivatives) then
+    Jac(thc_temperature_dof,:) = Jac(thc_temperature_dof,:) * option%scale
+  endif
+
 end subroutine THCAccumulation
 
 ! ************************************************************************** !
@@ -666,6 +672,13 @@ subroutine THCFlux(thc_auxvar_up,global_auxvar_up, &
 
   endif
 
+  ! energy row carried in option%scale units (MJ by default), as in TH
+  Res(thc_temperature_dof) = Res(thc_temperature_dof) * option%scale
+  if (calculate_derivatives) then
+    Jup(thc_temperature_dof,:) = Jup(thc_temperature_dof,:) * option%scale
+    Jdn(thc_temperature_dof,:) = Jdn(thc_temperature_dof,:) * option%scale
+  endif
+
   if (debug_connection) then
     write(*,'(9x,"IFF(res_f,kr,dp): ",8es12.4)') Res(thc_pressure_dof), &
                                                  kr, delta_pressure
@@ -1127,6 +1140,12 @@ subroutine THCBCFlux(ibndtype,auxvar_mapping,auxvars, &
 
   endif
 
+  ! energy row carried in option%scale units (MJ by default), as in TH
+  Res(thc_temperature_dof) = Res(thc_temperature_dof) * option%scale
+  if (calculate_derivatives) then
+    Jdn(thc_temperature_dof,:) = Jdn(thc_temperature_dof,:) * option%scale
+  endif
+
   if (debug_connection) then
     write(*,'(9x,"BFF(res_f,kr,dp): ",8es12.4)') Res(thc_pressure_dof), &
                                                  kr, delta_pressure
@@ -1380,6 +1399,12 @@ subroutine THCSrcSink(option,flow_aux_real_var,flow_src_sink_mapping, &
           c_p * (dqsrc_mass_dT * temp_used + qsrc_mass)
       endif
     endif
+  endif
+
+  ! energy row carried in option%scale units (MJ by default), as in TH
+  Res(thc_temperature_dof) = Res(thc_temperature_dof) * option%scale
+  if (calculate_derivatives) then
+    Jdn(thc_temperature_dof,:) = Jdn(thc_temperature_dof,:) * option%scale
   endif
 
 end subroutine THCSrcSink

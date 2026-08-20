@@ -31,20 +31,20 @@ module THC_Aux_module
   PetscReal, parameter, public :: thc_diffusion_ref_temp = 25.d0  ! [C]
 
   ! Energy formulation switch (selectable via ENERGY_FORMULATION input card).
-  !   THC_ENERGY_RHO_CP_T (default): liquid energy = rho*c_p*T
-  !   THC_ENERGY_FULL_EOS (TH-equivalent)  : liquid energy uses EOS u(P,T)
+  !   THC_ENERGY_RHO_CP_T: liquid energy = rho*c_p*T
+  !   THC_ENERGY_FULL_EOS (default, TH-equivalent): liquid energy uses EOS u(P,T)
   !                                              in accumulation and h(P,T) in
   !                                              advection (single-phase liquid)
-  ! Mass-specific (J/kg, J/m^3) units throughout -- no option%scale applied,
-  ! unlike TH which carries molar MJ. The rock term stays rho_s*c_s*T in both.
+  ! Mass-specific (J/kg, J/m^3) units in the auxvars; the kernels scale the
+  ! assembled energy rows by option%scale (MJ by default), as in TH.
   PetscInt, parameter, public :: THC_ENERGY_RHO_CP_T = 1
   PetscInt, parameter, public :: THC_ENERGY_FULL_EOS = 2
-  PetscInt, public :: thc_energy_mode = THC_ENERGY_RHO_CP_T
+  PetscInt, public :: thc_energy_mode = THC_ENERGY_FULL_EOS
 
   PetscInt, parameter, public :: THC_ADVECTIVE_DENSITY_UPWIND = 1
   PetscInt, parameter, public :: THC_ADVECTIVE_DENSITY_TH_COMPATIBLE = 2
   PetscInt, public :: thc_advective_density_mode = &
-                        THC_ADVECTIVE_DENSITY_UPWIND
+                        THC_ADVECTIVE_DENSITY_TH_COMPATIBLE
 
   ! perturbation controls (mirror zflow_aux.F90)
   PetscReal, public :: thc_rel_pert = 1.d-8
@@ -563,7 +563,8 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! --------------------------------------------------------------------------
   ! Step 8b: full-EOS specific enthalpy / internal energy (FULL_EOS mode only)
   ! --------------------------------------------------------------------------
-  ! Mirrors TH (th_aux.F90) but stays in mass-specific J/kg (no option%scale).
+  ! Mirrors TH (th_aux.F90) but stays in mass-specific J/kg here; the energy
+  ! rows are scaled by option%scale in the kernels.
   ! Liquid enthalpy h(P,T) from EOS water; internal energy u = h - P/rho.
   if (thc_energy_mode == THC_ENERGY_FULL_EOS) then
     call THCEnergyEOS(thc_auxvar,option)
@@ -679,7 +680,8 @@ subroutine THCEnergyEOS(thc_auxvar,option)
   ! and their derivatives from the water EOS, for the FULL_EOS energy
   ! formulation (single-phase liquid, no ice/vapor).
   !
-  ! TH (th_aux.F90) carries molar enthalpy scaled by option%scale (MJ/kmol).
+  ! TH (th_aux.F90) carries molar enthalpy pre-scaled by option%scale;
+  ! THC keeps auxvars unscaled and scales the assembled energy rows instead.
   ! Here we keep mass-specific SI units: h[J/kg] = h_molar[J/kmol]/FMWH2O,
   ! and u = h - P/rho_kg (the P*v work term), consistent with TH's
   !   u_molar = h_molar - P/rho_molar  divided through by FMWH2O.
