@@ -4,7 +4,7 @@ module Dataset_Global_HDF5_class
   use petscsys
 
   use Dataset_Common_HDF5_class
-  use DM_Custom_module
+  use UGDM_Pointer_module, only : ugdm_ptr_type
 
   use PFLOTRAN_Constants_module
 
@@ -15,7 +15,7 @@ module Dataset_Global_HDF5_class
   type, public, extends(dataset_common_hdf5_type) :: dataset_global_hdf5_type
     PetscInt :: local_size    ! local number of entries on this process
     PetscInt :: global_size   ! global number of entries
-    type(dm_ptr_type), pointer :: dm_wrapper ! pointer
+    type(ugdm_ptr_type), pointer :: dm_wrapper ! pointer
   end type dataset_global_hdf5_type
 
   PetscInt, parameter :: default_max_buffer_size = 10

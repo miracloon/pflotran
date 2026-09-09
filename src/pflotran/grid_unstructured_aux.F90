@@ -9,6 +9,7 @@ module Grid_Unstructured_Aux_module
   use Grid_Unstructured_Cell_module
   use Geometry_module
   use Well_Grid_module
+  use UGDM_Pointer_module
 
   use PFLOTRAN_Constants_module
 
@@ -129,38 +130,6 @@ module Grid_Unstructured_Aux_module
     PetscInt :: ugrid_num_faces_local
   end type unstructured_polyhedra_type
 
-  type, public :: ugdm_type
-    ! local: included both local (non-ghosted) and ghosted cells
-    ! global: includes only local (non-ghosted) cells
-    PetscInt :: ndof
-    ! for the below
-    ! ghosted = local (non-ghosted) and ghosted cells
-    ! local = local (non-ghosted) cells
-    IS :: is_ghosted_local ! IS for ghosted cells with local on-processor numbering
-    IS :: is_local_local ! IS for local cells with local on-processor numbering
-    IS :: is_ghosted_petsc ! IS for ghosted cells with petsc numbering
-    IS :: is_local_petsc ! IS for local cells with petsc numbering
-    IS :: is_ghosts_local ! IS for ghost cells with local on-processor numbering
-    IS :: is_ghosts_petsc ! IS for ghost cells with petsc numbering
-    IS :: is_local_natural ! IS for local cells with natural (global) numbering
-    VecScatter :: scatter_ltog ! scatter context for local to global updates
-    VecScatter :: scatter_gtol ! scatter context for global to local updates
-    VecScatter :: scatter_ltol ! scatter context for local to local updates
-    VecScatter :: scatter_gton ! scatter context for global to natural updates
-    ISLocalToGlobalMapping :: mapping_ltog  ! petsc vec local to global mapping
-!geh: deprecated in PETSc in spring 2014
-!    ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
-    Vec :: global_vec ! global vec (no ghost cells), petsc-ordering
-    Vec :: local_vec ! local vec (includes local and ghosted cells), local ordering
-    VecScatter :: scatter_bet_grids ! scatter context between surface and subsurface
-                                    ! grids
-    VecScatter :: scatter_bet_grids_1dof ! scatter context between surface and
-                                         ! subsurface grids for 1-DOF
-    VecScatter :: scatter_bet_grids_ndof ! scatter context between surface and
-                                         ! subsurface grids for N-DOFs
-    AO :: ao_natural_to_petsc
-  end type ugdm_type
-
   !  PetscInt, parameter :: HEX_TYPE          = 1
   !  PetscInt, parameter :: TET_TYPE          = 2
   !  PetscInt, parameter :: WEDGE_TYPE        = 3
@@ -178,7 +147,6 @@ module Grid_Unstructured_Aux_module
             UGridDestroy, &
             UGridCreateUGDM, &
             UGridCreateUGDMShell, &
-            UGridDMDestroy, &
             UGridPartition, &
             UGridNaturalToPetsc, &
             UGridCreateOldVec, &
@@ -189,45 +157,6 @@ module Grid_Unstructured_Aux_module
             UCellGetApproxDXYZ
 
 contains
-
-! ************************************************************************** !
-
-function UGDMCreate()
-  !
-  ! Creates an unstructured grid distributed mesh object
-  !
-  ! Author: Glenn Hammond
-  ! Date: 10/21/09
-  !
-
-  implicit none
-
-  type(ugdm_type), pointer :: UGDMCreate
-
-  type(ugdm_type), pointer :: ugdm
-
-  allocate(ugdm)
-  PetscObjectNullify(ugdm%is_ghosted_local)
-  PetscObjectNullify(ugdm%is_local_local)
-  PetscObjectNullify(ugdm%is_ghosted_petsc)
-  PetscObjectNullify(ugdm%is_local_petsc)
-  PetscObjectNullify(ugdm%is_ghosts_local)
-  PetscObjectNullify(ugdm%is_ghosts_petsc)
-  PetscObjectNullify(ugdm%is_local_natural)
-  PetscObjectNullify(ugdm%scatter_ltog)
-  PetscObjectNullify(ugdm%scatter_gtol)
-  PetscObjectNullify(ugdm%scatter_ltol)
-  PetscObjectNullify(ugdm%scatter_gton)
-  PetscObjectNullify(ugdm%mapping_ltog)
-  PetscObjectNullify(ugdm%global_vec)
-  PetscObjectNullify(ugdm%local_vec)
-  PetscObjectNullify(ugdm%scatter_bet_grids)
-  PetscObjectNullify(ugdm%scatter_bet_grids_1dof)
-  PetscObjectNullify(ugdm%scatter_bet_grids_ndof)
-  PetscObjectNullify(ugdm%ao_natural_to_petsc) ! this is solely a pointer, do not destroy
-  UGDMCreate => ugdm
-
-end function UGDMCreate
 
 ! ************************************************************************** !
 
@@ -389,7 +318,33 @@ end function UGridPolyhedraCreate
 
 ! ************************************************************************** !
 
-subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,dm)
+subroutine UGridVecSetTypeFromDM(vec,dm)
+  !
+  ! Copies the Vec type from a PETSc DM onto vec when the DM is not null.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/09/26
+  !
+  implicit none
+
+  Vec :: vec
+  DM :: dm
+
+  VecType :: dm_vec_type
+  PetscErrorCode :: ierr
+
+  if (.not.PetscObjectIsNull(dm)) then
+    call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
+    if (len_trim(dm_vec_type) > 0) then
+      call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
+    endif
+  endif
+
+end subroutine UGridVecSetTypeFromDM
+
+! ************************************************************************** !
+
+subroutine UGridCreateUGDM(unstructured_grid,dm_ptr,ndof,option)
   !
   ! Constructs mappings / scatter contexts for PETSc DM
   ! object
@@ -404,10 +359,11 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,dm)
   implicit none
 
   type(grid_unstructured_type) :: unstructured_grid
-  type(ugdm_type), pointer :: ugdm
+  type(ugdm_ptr_type) :: dm_ptr
   PetscInt :: ndof
   type(option_type) :: option
-  DM, optional :: dm
+
+  type(ugdm_type), pointer :: ugdm
 
   PetscInt, pointer :: int_ptr(:)
   PetscInt :: local_id, ghosted_id
@@ -419,11 +375,11 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,dm)
   PetscViewer :: viewer
 #endif
   PetscErrorCode :: ierr
-  VecType :: dm_vec_type
 
   PetscInt, allocatable :: int_array(:)
 
   ugdm => UGDMCreate()
+  dm_ptr%ugdm => ugdm
   ugdm%ndof = ndof
 
 #if UGRID_DEBUG
@@ -441,12 +397,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,dm)
   call VecSetSizes(ugdm%global_vec,unstructured_grid%nlmax*ndof,PETSC_DECIDE, &
                    ierr);CHKERRQ(ierr)
   call VecSetBlockSize(ugdm%global_vec,ndof,ierr);CHKERRQ(ierr)
-  if (present(dm)) then
-    call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
-    if (len_trim(dm_vec_type) > 0) then
-      call VecSetType(ugdm%global_vec,dm_vec_type,ierr);CHKERRQ(ierr)
-    endif
-  endif
+  call UGridVecSetTypeFromDM(ugdm%global_vec,dm_ptr%dm)
   call VecSetFromOptions(ugdm%global_vec,ierr);CHKERRQ(ierr)
 
   ! create local vec
@@ -456,12 +407,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,dm)
   call VecSetSizes(ugdm%local_vec,unstructured_grid%ngmax*ndof,PETSC_DECIDE, &
                    ierr);CHKERRQ(ierr)
   call VecSetBlockSize(ugdm%local_vec,ndof,ierr);CHKERRQ(ierr)
-  if (present(dm)) then
-    call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
-    if (len_trim(dm_vec_type) > 0) then
-      call VecSetType(ugdm%local_vec,dm_vec_type,ierr);CHKERRQ(ierr)
-    endif
-  endif
+  call UGridVecSetTypeFromDM(ugdm%local_vec,dm_ptr%dm)
   call VecSetFromOptions(ugdm%local_vec,ierr);CHKERRQ(ierr)
 
   ! IS for global numbering of local, non-ghosted cells
@@ -741,7 +687,7 @@ end subroutine UGridCreateUGDM
 
 ! ************************************************************************** !
 
-subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option, &
+subroutine UGridCreateUGDMShell(unstructured_grid,dm_ptr,ndof,option, &
                                 options_prefix)
 
   !
@@ -756,44 +702,42 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option, &
   implicit none
 
   type(grid_unstructured_type) :: unstructured_grid
-  DM :: da
-  type(ugdm_type), pointer :: ugdm
+  type(ugdm_ptr_type) :: dm_ptr
   PetscInt :: ndof
   type(option_type) :: option
   character(len=*) :: options_prefix
 
   Vec :: global_vec, local_vec
-  !Mat :: jac
   PetscErrorCode :: ierr
 
   ! Create the DMShell and process -dm_vec_type
-  call DMShellCreate(option%mycomm,da,ierr);CHKERRQ(ierr)
+  call DMShellCreate(option%mycomm,dm_ptr%dm,ierr);CHKERRQ(ierr)
   if (ndof > 1) then
-    call DMSetMatType(da,MATBAIJ,ierr);CHKERRQ(ierr)
+    call DMSetMatType(dm_ptr%dm,MATBAIJ,ierr);CHKERRQ(ierr)
   else
-    call DMSetMatType(da,MATAIJ,ierr);CHKERRQ(ierr)
+    call DMSetMatType(dm_ptr%dm,MATAIJ,ierr);CHKERRQ(ierr)
   endif
-  call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
-  call DMSetFromOptions(da,ierr);CHKERRQ(ierr)
+  call DMSetOptionsPrefix(dm_ptr%dm,options_prefix,ierr);CHKERRQ(ierr)
+  call DMSetFromOptions(dm_ptr%dm,ierr);CHKERRQ(ierr)
 
   ! Create UGDM
-  call UGridCreateUGDM(unstructured_grid,ugdm,ndof,option,da)
+  call UGridCreateUGDM(unstructured_grid,dm_ptr,ndof,option)
 
   ! Set VecScatters
-  call DMShellSetGlobalToLocalVecScatter(da,ugdm%scatter_gtol, &
+  call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_gtol, &
                                          ierr);CHKERRQ(ierr)
-  call DMShellSetLocalToGlobalVecScatter(da,ugdm%scatter_ltog, &
+  call DMShellSetLocalToGlobalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_ltog, &
                                          ierr);CHKERRQ(ierr)
-  call DMShellSetLocalToLocalVecScatter(da,ugdm%scatter_ltol, &
+  call DMShellSetLocalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_ltol, &
                                         ierr);CHKERRQ(ierr)
 
   ! Create vectors
-  call UGridDMCreateVector(unstructured_grid,ugdm,global_vec,GLOBAL,option,da)
-  call UGridDMCreateVector(unstructured_grid,ugdm,local_vec,LOCAL,option,da)
+  call UGridDMCreateVector(unstructured_grid,dm_ptr,global_vec,GLOBAL,option)
+  call UGridDMCreateVector(unstructured_grid,dm_ptr,local_vec,LOCAL,option)
 
   ! Set vectors
-  call DMShellSetGlobalVector(da,global_vec,ierr);CHKERRQ(ierr)
-  call DMShellSetLocalVector(da,local_vec,ierr);CHKERRQ(ierr)
+  call DMShellSetGlobalVector(dm_ptr%dm,global_vec,ierr);CHKERRQ(ierr)
+  call DMShellSetLocalVector(dm_ptr%dm,local_vec,ierr);CHKERRQ(ierr)
 
   call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(local_vec,ierr);CHKERRQ(ierr)
@@ -940,7 +884,7 @@ end subroutine UGridDMCreateMatrix
 
 ! ************************************************************************** !
 
-subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option,dm)
+subroutine UGridDMCreateVector(unstructured_grid,dm_ptr,vec,vec_type,option)
   !
   ! Creates a global vector with PETSc ordering
   !
@@ -953,14 +897,15 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option,dm)
   implicit none
 
   type(grid_unstructured_type) :: unstructured_grid
-  type(ugdm_type) :: ugdm
+  type(ugdm_ptr_type) :: dm_ptr
   Vec :: vec
   PetscInt :: vec_type
   type(option_type) :: option
-  DM, optional :: dm
 
+  type(ugdm_type), pointer :: ugdm
   PetscErrorCode :: ierr
-  VecType :: dm_vec_type
+
+  ugdm => dm_ptr%ugdm
 
   select case(vec_type)
     case(GLOBAL)
@@ -973,12 +918,7 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option,dm)
       call VecSetLocalToGlobalMapping(vec,ugdm%mapping_ltog, &
                                       ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr);CHKERRQ(ierr)
-      if (present(dm)) then
-        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
-        if (len_trim(dm_vec_type) > 0) then
-          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
-        endif
-      endif
+      call UGridVecSetTypeFromDM(vec,dm_ptr%dm)
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(LOCAL)
       !call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%ngmax* &
@@ -988,12 +928,7 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option,dm)
       call VecSetSizes(vec,unstructured_grid%ngmax*ugdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr);CHKERRQ(ierr)
-      if (present(dm)) then
-        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
-        if (len_trim(dm_vec_type) > 0) then
-          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
-        endif
-      endif
+      call UGridVecSetTypeFromDM(vec,dm_ptr%dm)
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(NATURAL)
       !call VecCreateMPI(option%mycomm,unstructured_grid%nlmax* &
@@ -1003,12 +938,7 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option,dm)
       call VecSetSizes(vec,unstructured_grid%nlmax*ugdm%ndof,PETSC_DECIDE, &
                        ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr);CHKERRQ(ierr)
-      if (present(dm)) then
-        call DMGetVecType(dm,dm_vec_type,ierr);CHKERRQ(ierr)
-        if (len_trim(dm_vec_type) > 0) then
-          call VecSetType(vec,dm_vec_type,ierr);CHKERRQ(ierr)
-        endif
-      endif
+      call UGridVecSetTypeFromDM(vec,dm_ptr%dm)
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
   end select
 
@@ -2106,48 +2036,6 @@ subroutine UGridDestroy(unstructured_grid)
   nullify(unstructured_grid)
 
 end subroutine UGridDestroy
-
-! ************************************************************************** !
-
-subroutine UGridDMDestroy(ugdm)
-  !
-  ! Deallocates a unstructured grid distributed mesh
-  !
-  ! Author: Glenn Hammond
-  ! Date: 11/01/09
-  !
-  use Petsc_Utility_module
-
-  implicit none
-
-  type(ugdm_type), pointer :: ugdm
-
-  if (.not.associated(ugdm)) return
-
-  call PUISDestroy(ugdm%is_ghosted_local)
-  call PUISDestroy(ugdm%is_local_local)
-  call PUISDestroy(ugdm%is_ghosted_petsc)
-  call PUISDestroy(ugdm%is_local_petsc)
-  call PUISDestroy(ugdm%is_ghosts_local)
-  call PUISDestroy(ugdm%is_ghosts_petsc)
-  call PUISDestroy(ugdm%is_local_natural)
-  call PUVecScatterDestroy(ugdm%scatter_ltog)
-  call PUVecScatterDestroy(ugdm%scatter_gtol)
-  call PUVecScatterDestroy(ugdm%scatter_ltol)
-  call PUVecScatterDestroy(ugdm%scatter_gton)
-  call PUISLocalToGlobalMappingDestroy(ugdm%mapping_ltog)
-  call PUVecDestroy(ugdm%global_vec)
-  call PUVecDestroy(ugdm%local_vec)
-  call PUVecScatterDestroy(ugdm%scatter_bet_grids)
-  call PUVecScatterDestroy(ugdm%scatter_bet_grids_1dof)
-  call PUVecScatterDestroy(ugdm%scatter_bet_grids_ndof)
-  ! ugdm%ao_natural_to_petsc is a pointer to ugrid%ao_natural_to_petsc.  Do
-  ! not destroy here.
-  PetscObjectNullify(ugdm%ao_natural_to_petsc)
-  deallocate(ugdm)
-  nullify(ugdm)
-
-end subroutine UGridDMDestroy
 
 ! ************************************************************************** !
 

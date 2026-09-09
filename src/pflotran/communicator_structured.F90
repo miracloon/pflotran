@@ -64,12 +64,12 @@ subroutine StructuredSetDM(this,dm_ptr)
   ! Date: 03/18/13
   !
 
-  use DM_Custom_module
+  use UGDM_Pointer_module, only : ugdm_ptr_type
 
   implicit none
 
   class(structured_communicator_type) :: this
-  type(dm_ptr_type) :: dm_ptr
+  type(ugdm_ptr_type) :: dm_ptr
 
   this%dm = dm_ptr%dm
 

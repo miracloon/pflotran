@@ -247,6 +247,7 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   use Geomechanics_Realization_class
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
+  use GMDM_Pointer_module
   use Option_module
   use Geomechanics_Patch_module
 
@@ -1437,6 +1438,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   use Geomechanics_Realization_class
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
+  use GMDM_Pointer_module
   use Option_module
   use Variables_module
 

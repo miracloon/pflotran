@@ -8,8 +8,8 @@ module Discretization_module
   use Grid_Unstructured_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Explicit_module
+  use UGDM_Pointer_module
   use Grid_Unstructured_Polyhedra_module
-  use DM_Custom_module
 
   use PFLOTRAN_Constants_module
 
@@ -26,15 +26,15 @@ module Discretization_module
     type(grid_type), pointer :: grid  ! pointer to a grid object
     character(len=MAXSTRINGLENGTH) :: filename
 
-    type(dm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
+    type(ugdm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
     PetscInt :: dm_index_to_ndof(7) ! mapping between a dm_ptr to the number of degrees of freedom
-    type(dm_ptr_type), pointer :: dm_1dof
-    type(dm_ptr_type), pointer :: dm_nflowdof
-    type(dm_ptr_type), pointer :: dm_ntrandof
-    type(dm_ptr_type), pointer :: dm_geopdof
-    type(dm_ptr_type), pointer :: dm_n_stress_strain_dof
+    type(ugdm_ptr_type), pointer :: dm_1dof
+    type(ugdm_ptr_type), pointer :: dm_nflowdof
+    type(ugdm_ptr_type), pointer :: dm_ntrandof
+    type(ugdm_ptr_type), pointer :: dm_geopdof
+    type(ugdm_ptr_type), pointer :: dm_n_stress_strain_dof
     VecScatter :: tvd_ghost_scatter
 
     PetscInt :: stencil_width
@@ -796,7 +796,7 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
   implicit none
 
   type(discretization_type) :: discretization
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
   PetscInt :: ndof
   PetscInt :: stencil_width
   DMDAStencilType :: stencil_type
@@ -810,7 +810,7 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
                               option,options_prefix)
     case(UNSTRUCTURED_GRID)
       call UGridCreateUGDMShell(discretization%grid%unstructured_grid, &
-                           dm_ptr%dm,dm_ptr%ugdm,ndof,option,options_prefix)
+                           dm_ptr,ndof,option,options_prefix)
   end select
 
 end subroutine DiscretizationCreateDM
@@ -836,7 +836,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
   type(option_type) :: option
   PetscErrorCode :: ierr
 
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -851,8 +851,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
           call DMDACreateNaturalVector(dm_ptr%dm,vector,ierr);CHKERRQ(ierr)
         case(UNSTRUCTURED_GRID)
           call UGridDMCreateVector(discretization%grid%unstructured_grid, &
-                                   dm_ptr%ugdm,vector, &
-                                   vector_type,option,dm_ptr%dm)
+                                   dm_ptr,vector,vector_type,option)
         end select
   end select
 
@@ -897,7 +896,7 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   type(discretization_type) :: discretization
   PetscInt :: dm_index
 
-  type(dm_ptr_type), pointer :: DiscretizationGetDMPtrFromIndex
+  type(ugdm_ptr_type), pointer :: DiscretizationGetDMPtrFromIndex
 
   select case (dm_index)
     case(ONEDOF)
@@ -923,7 +922,7 @@ function DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
   type(discretization_type) :: discretization
   PetscInt :: dm_index
 
-  type(dm_ptr_type), pointer :: DiscretizationGetDMCPtrFromIndex(:)
+  type(ugdm_ptr_type), pointer :: DiscretizationGetDMCPtrFromIndex(:)
 
   select case (dm_index)
     case(NFLOWDOF)
@@ -956,7 +955,7 @@ subroutine DiscretizationCreateMatrix(discretization,dm_index,mat_type, &
   PetscBool :: keep_non_zero_pattern
   type(option_type) :: option
 
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -1003,10 +1002,10 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
 
   PetscInt :: mg_levels
   PetscInt :: refine_x, refine_y, refine_z
-  type(dm_ptr_type), pointer :: dm_ptr
-  type(dm_ptr_type), pointer :: dmc_ptr(:)
+  type(ugdm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dmc_ptr(:)
   PetscInt :: i
-  type(dm_ptr_type), pointer :: dm_fine_ptr
+  type(ugdm_ptr_type), pointer :: dm_fine_ptr
     ! Used to point to finer-grid DM in the loop that constructst the
     ! interpolation hierarchy.
 
@@ -1077,7 +1076,7 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
   type(option_type) :: option
   ISColoring :: coloring
 
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -1116,7 +1115,7 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   Vec :: local_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -1146,7 +1145,7 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
   Vec :: global_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -1176,7 +1175,7 @@ subroutine DiscretizationLocalToGlobalAdd(discretization,local_vec,global_vec,dm
   Vec :: global_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -1212,7 +1211,7 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   Vec :: local_vec2
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -1240,7 +1239,7 @@ subroutine DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,d
   Vec :: natural_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
@@ -1276,7 +1275,7 @@ subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,d
   Vec :: global_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 

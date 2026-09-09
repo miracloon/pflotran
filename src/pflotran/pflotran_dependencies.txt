@@ -167,20 +167,20 @@ co2eos.o : \
   utility.o
 communicator_aux.o :
 communicator_base.o : \
-  dm_custom.o \
-  pflotran_constants.o
+  pflotran_constants.o \
+  ugdm_pointer.o
 communicator_structured.o : \
   communicator_base.o \
-  dm_custom.o \
   grid_structured.o \
-  pflotran_constants.o
+  pflotran_constants.o \
+  ugdm_pointer.o
 communicator_unstructured.o : \
   communicator_base.o \
-  dm_custom.o \
   grid_unstructured.o \
   grid_unstructured_aux.o \
   grid_unstructured_explicit.o \
-  pflotran_constants.o
+  pflotran_constants.o \
+  ugdm_pointer.o
 condition.o : \
   dataset.o \
   dataset_ascii.o \
@@ -210,7 +210,6 @@ condition.o : \
   zflow_aux.o
 condition_control.o : \
   condition.o \
-  connection.o \
   coupler.o \
   dataset.o \
   dataset_base.o \
@@ -303,7 +302,6 @@ dataset.o : \
   dataset_global_hdf5.o \
   dataset_gridded_hdf5.o \
   dataset_map_hdf5.o \
-  dm_custom.o \
   input_aux.o \
   option.o \
   pflotran_constants.o \
@@ -337,12 +335,12 @@ dataset_common_hdf5.o : \
 dataset_global_hdf5.o : \
   dataset_base.o \
   dataset_common_hdf5.o \
-  dm_custom.o \
   hdf5_aux.o \
   logging.o \
   option.o \
   pflotran_constants.o \
   time_storage.o \
+  ugdm_pointer.o \
   utility.o
 dataset_gridded_hdf5.o : \
   dataset_base.o \
@@ -375,7 +373,6 @@ debug.o : \
   string.o \
   utility.o
 discretization.o : \
-  dm_custom.o \
   grid.o \
   grid_eclipse.o \
   grid_structured.o \
@@ -388,10 +385,8 @@ discretization.o : \
   option.o \
   petsc_utility.o \
   pflotran_constants.o \
-  string.o
-dm_custom.o : \
-  grid_unstructured_aux.o \
-  pflotran_constants.o
+  string.o \
+  ugdm_pointer.o
 driver.o : \
   communicator_aux.o \
   pflotran_constants.o \
@@ -490,10 +485,12 @@ factory_forward.o : \
   waypoint.o
 factory_geomechanics.o : \
   factory_subsurface.o \
+  geomech_grid_aux.o \
   geomechanics_discretization.o \
   geomechanics_force.o \
   geomechanics_realization.o \
   geomechanics_regression.o \
+  gmdm_pointer.o \
   init_common.o \
   init_subsurface_geomechanics.o \
   input_aux.o \
@@ -538,7 +535,6 @@ factory_subsurface.o : \
   dataset.o \
   debug.o \
   discretization.o \
-  dm_custom.o \
   eos.o \
   factory_subsurface_linkage.o \
   field.o \
@@ -604,6 +600,7 @@ factory_subsurface.o : \
   simulation_subsurface.o \
   strata.o \
   timestepper_SNES.o \
+  ugdm_pointer.o \
   utility.o \
   waypoint.o \
   wipp.o \
@@ -864,6 +861,7 @@ geomech_grid.o : \
 geomech_grid_aux.o : \
   gauss.o \
   geometry.o \
+  gmdm_pointer.o \
   grid_unstructured_cell.o \
   option.o \
   petsc_utility.o \
@@ -902,6 +900,7 @@ geomechanics_debug.o : \
 geomechanics_discretization.o : \
   geomech_grid.o \
   geomech_grid_aux.o \
+  gmdm_pointer.o \
   option.o \
   pflotran_constants.o
 geomechanics_field.o : \
@@ -923,13 +922,16 @@ geomechanics_force.o : \
   geomechanics_patch.o \
   geomechanics_realization.o \
   geomechanics_region.o \
+  gmdm_pointer.o \
   grid.o \
   grid_structured.o \
   grid_unstructured_cell.o \
+  material_aux.o \
   option.o \
   option_geomechanics.o \
   output_aux.o \
   parameter.o \
+  patch.o \
   petsc_utility.o \
   pflotran_constants.o \
   realization_subsurface.o \
@@ -994,6 +996,7 @@ geomechanics_realization.o : \
   geomechanics_patch.o \
   geomechanics_region.o \
   geomechanics_strata.o \
+  gmdm_pointer.o \
   grid.o \
   input_aux.o \
   option.o \
@@ -1077,9 +1080,10 @@ global_aux.o : \
   option.o \
   pflotran_constants.o \
   utility.o
+gmdm_pointer.o : \
+  petsc_utility.o
 grid.o : \
   connection.o \
-  dm_custom.o \
   geometry.o \
   grid_structured.o \
   grid_unstructured.o \
@@ -1091,6 +1095,7 @@ grid.o : \
   pflotran_constants.o \
   region.o \
   string.o \
+  ugdm_pointer.o \
   utility.o
 grid_eclipse.o : \
   grid_eclipse_util.o \
@@ -1134,6 +1139,7 @@ grid_unstructured_aux.o : \
   petsc_utility.o \
   pflotran_constants.o \
   string.o \
+  ugdm_pointer.o \
   utility.o \
   well_grid.o
 grid_unstructured_cell.o : \
@@ -1267,6 +1273,7 @@ hydrostatic.o : \
   sco2_aux.o \
   string.o \
   th_aux.o \
+  thc_aux.o \
   utility.o \
   wipp_flow_aux.o \
   zflow_aux.o
@@ -1394,6 +1401,7 @@ init_subsurface_geomechanics.o : \
   geomechanics_region.o \
   geomechanics_regression.o \
   geomechanics_strata.o \
+  gmdm_pointer.o \
   grid.o \
   grid_structured.o \
   grid_unstructured.o \
@@ -1831,7 +1839,6 @@ output_common.o : \
   connection.o \
   coupler.o \
   discretization.o \
-  dm_custom.o \
   field.o \
   general_aux.o \
   global_aux.o \
@@ -1851,6 +1858,7 @@ output_common.o : \
   richards_aux.o \
   sco2_aux.o \
   th_aux.o \
+  ugdm_pointer.o \
   variables.o \
   wipp_flow_aux.o
 output_conservation.o : \
@@ -1876,6 +1884,7 @@ output_conservation.o : \
   realization_subsurface.o \
   richards.o \
   sco2.o \
+  sco2_aux.o \
   string.o \
   th.o \
   utility.o \
@@ -1893,6 +1902,7 @@ output_geomechanics.o : \
   geomechanics_global_aux.o \
   geomechanics_patch.o \
   geomechanics_realization.o \
+  gmdm_pointer.o \
   grid_unstructured_cell.o \
   hdf5.o \
   hdf5_aux.o \
@@ -1928,6 +1938,7 @@ output_hdf5.o : \
   realization_base.o \
   region.o \
   string.o \
+  ugdm_pointer.o \
   utility.o \
   variables.o
 output_obs_h5.o : \
@@ -1989,7 +2000,6 @@ output_tecplot.o : \
   connection.o \
   coupler.o \
   discretization.o \
-  dm_custom.o \
   field.o \
   grid.o \
   grid_structured.o \
@@ -2007,6 +2017,7 @@ output_tecplot.o : \
   region.o \
   secondary_continuum_aux.o \
   string.o \
+  ugdm_pointer.o \
   utility.o \
   variables.o
 output_vtk.o : \
@@ -2085,6 +2096,7 @@ patch.o : \
   strata.o \
   string.o \
   th_aux.o \
+  thc_aux.o \
   transport_constraint.o \
   transport_constraint_base.o \
   transport_constraint_nwt.o \
@@ -3627,7 +3639,6 @@ realization_subsurface.o : \
   dataset_base.o \
   dataset_common_hdf5.o \
   discretization.o \
-  dm_custom.o \
   field.o \
   fluid.o \
   global_aux.o \
@@ -4153,6 +4164,7 @@ th_aux.o : \
   utility.o
 th_well.o : \
   connection.o \
+  field.o \
   grid.o \
   grid_unstructured_aux.o \
   matrix_zeroing.o \
@@ -4162,7 +4174,6 @@ th_well.o : \
   pflotran_constants.o \
   pm_well.o \
   realization_subsurface.o \
-  string.o \
   th_aux.o
 thc.o : \
   characteristic_curves.o \
@@ -4170,6 +4181,7 @@ thc.o : \
   coupler.o \
   debug.o \
   discretization.o \
+  eos_water.o \
   field.o \
   fluid.o \
   global_aux.o \
@@ -4199,12 +4211,14 @@ thc_aux.o : \
   utility.o
 thc_common.o : \
   connection.o \
+  eos_water.o \
   global_aux.o \
   material_aux.o \
   option.o \
   pflotran_constants.o \
   string.o \
-  thc_aux.o
+  thc_aux.o \
+  utility.o
 thc_eos_utils.o : \
   eos_water.o \
   pflotran_constants.o
@@ -4332,6 +4346,8 @@ transport_np.o : \
   pflotran_constants.o \
   reaction_aux.o \
   reactive_transport_aux.o
+ugdm_pointer.o : \
+  petsc_utility.o
 units.o : \
   option.o \
   pflotran_constants.o

@@ -1,7 +1,9 @@
 module Output_Common_module
 
 #include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscdm.h"
   use petscvec
+  use petscdm
   use Logging_module
   use Output_Aux_module
 
@@ -880,6 +882,7 @@ subroutine OutputGetFaceVelUGrid(realization_base)
   use Grid_module
   use Option_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
@@ -901,6 +904,7 @@ subroutine OutputGetFaceVelUGrid(realization_base)
   type(ugdm_type),pointer :: ugdm
   type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
+  type(ugdm_ptr_type) :: dm_ptr
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -940,15 +944,18 @@ subroutine OutputGetFaceVelUGrid(realization_base)
   field => realization_base%field
 
   ! Create UGDM for
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr, &
                        (option%nflowspec*MAX_FACE_PER_CELL + 1),option)
+  ugdm => dm_ptr%ugdm
 
   ! Create vectors in natural order for velocity in x/y/z direction
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vx_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,natural_vx_vec, &
                            NATURAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vy_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,natural_vy_vec, &
                            NATURAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vz_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,natural_vz_vec, &
                            NATURAL,option)
 
   allocate(vx(option%nflowspec,MAX_FACE_PER_CELL,ugrid%nlmax))
@@ -1176,6 +1183,7 @@ subroutine OutputGetFaceFlowrateUGrid(realization_base)
   use Grid_module
   use Option_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
@@ -1197,6 +1205,7 @@ subroutine OutputGetFaceFlowrateUGrid(realization_base)
   type(ugdm_type),pointer :: ugdm
   type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
+  type(ugdm_ptr_type) :: dm_ptr
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -1228,12 +1237,15 @@ subroutine OutputGetFaceFlowrateUGrid(realization_base)
   field => realization_base%field
 
   ! Create UGDM for
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr, &
                        (option%nflowdof*MAX_FACE_PER_CELL + 1),option)
+  ugdm => dm_ptr%ugdm
 
   ! Create a flowrate vector in natural order
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_flowrates_vec, &
-                           NATURAL,option)
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr, &
+                           natural_flowrates_vec,NATURAL,option)
 
   allocate(flowrates(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
   flowrates = 0.d0
@@ -1384,6 +1396,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   use Grid_module
   use Option_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Field_module
   use Connection_module
 
@@ -1398,6 +1411,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   type(ugdm_type), pointer :: ugdm
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  type(ugdm_ptr_type) :: dm_ptr
 
 
   PetscReal, pointer :: vec_ptr(:)
@@ -1425,10 +1439,13 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
                     PETSC_DETERMINE,vec_proc,ierr);CHKERRQ(ierr)
   call VecSet(vec_proc,0.d0,ierr);CHKERRQ(ierr)
 
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm,ONE_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,global_vec, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr,ONE_INTEGER,option)
+  ugdm => dm_ptr%ugdm
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,global_vec, &
                            GLOBAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,local_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,local_vec, &
                            LOCAL,option)
   call VecGetArray(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
   vec_ptr = option%myrank
@@ -1797,7 +1814,8 @@ subroutine OutputCollectVelocityOrFlux(realization_base, iphase, direction, &
   use Field_module
   use Connection_module
   use Coupler_module
-  use DM_Custom_module
+  use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
 
   implicit none
 
@@ -1813,7 +1831,7 @@ subroutine OutputCollectVelocityOrFlux(realization_base, iphase, direction, &
   type(field_type), pointer :: field
   type(grid_structured_type), pointer :: structured_grid
   type(option_type), pointer :: option
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
 
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_size

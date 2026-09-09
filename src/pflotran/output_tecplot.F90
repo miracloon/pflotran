@@ -611,7 +611,7 @@ subroutine OutputTecplotWriteFluxVelBlock(realization_base,iphase, &
   use Connection_module
   use Coupler_module
   use Patch_module
-  use DM_Custom_module
+  use Grid_Unstructured_Aux_module
 
   implicit none
 
@@ -1676,6 +1676,7 @@ subroutine OutputTecplotWriteUGridElements(fid,realization_base)
   use Realization_Base_class, only : realization_base_type
   use Grid_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Option_module
   use Patch_module
 
@@ -1688,6 +1689,7 @@ subroutine OutputTecplotWriteUGridElements(fid,realization_base)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(ugdm_type), pointer :: ugdm_element
+  type(ugdm_ptr_type) :: dm_ptr
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
@@ -1698,10 +1700,13 @@ subroutine OutputTecplotWriteUGridElements(fid,realization_base)
   grid => patch%grid
   option => realization_base%option
 
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr,EIGHT_INTEGER,option)
+  ugdm_element => dm_ptr%ugdm
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,global_vec, &
                            GLOBAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,natural_vec, &
                            NATURAL,option)
   call OutputTecplotGetCellVertices(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &

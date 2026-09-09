@@ -10,6 +10,7 @@ module Geomechanics_Grid_Aux_module
   use Gauss_module
   use PFLOTRAN_Constants_module
   use Geometry_module
+  use GMDM_Pointer_module
 
   implicit none
 
@@ -53,49 +54,6 @@ module Geomechanics_Grid_Aux_module
     Vec :: no_elems_sharing_node
   end type geomech_grid_type
 
-
-  type, public :: gmdm_type                  ! Geomech. DM type
-    ! local: included both local (non-ghosted) and ghosted nodes
-    ! global: includes only local (non-ghosted) nodes
-    PetscInt :: ndof
-    ! for the below
-    ! ghosted = local (non-ghosted) and ghosted nodes
-    ! local = local (non-ghosted) nodes
-    IS :: is_ghosted_local                   ! IS for ghosted nodes with local on-processor numbering
-    IS :: is_local_local                     ! IS for local nodes with local on-processor numbering
-    IS :: is_ghosted_petsc                   ! IS for ghosted nodes with petsc numbering
-    IS :: is_local_petsc                     ! IS for local nodes with petsc numbering
-    IS :: is_ghosts_local                    ! IS for ghost nodes with local on-processor numbering
-    IS :: is_ghosts_petsc                    ! IS for ghost nodes with petsc numbering
-    IS :: is_local_natural                   ! IS for local nodes with natural (global) numbering
-    VecScatter :: scatter_ltog               ! scatter context for local to global updates
-    VecScatter :: scatter_gtol               ! scatter context for global to local updates
-    VecScatter :: scatter_ltol               ! scatter context for local to local updates
-    VecScatter :: scatter_gton               ! scatter context for global to natural updates
-    VecScatter :: scatter_gton_elem          ! scatter context for global to natural updates for elements(cells)
-    ISLocalToGlobalMapping :: mapping_ltog   ! petsc vec local to global mapping
-!geh: deprecated in PETSc in spring 2014
-!    ISLocalToGlobalMapping :: mapping_ltogb  ! block form of mapping_ltog
-    ISLocalToGlobalMapping :: mapping_ltog_elem   ! For elements
-!geh: deprecated in PETSc in spring 2014
-!    ISLocalToGlobalMapping :: mapping_ltogb_elem  ! For elements
-    Vec :: global_vec                        ! global vec (no ghost nodes), petsc-ordering
-    Vec :: local_vec                         ! local vec (includes local and ghosted nodes), local ordering
-    Vec :: global_vec_elem
-    VecScatter :: scatter_subsurf_to_geomech_ndof ! scatter context between subsurface and
-                                                  ! geomech grids for 1-DOF
-    VecScatter :: scatter_geomech_to_subsurf_ndof ! scatter context between geomech and
-                                                  ! subsurface grids for N-DOFs (Ndof = ngeomechdof)
-
-  end type gmdm_type
-
-  ! PETSc DM plus the PFLOTRAN geomech scatter/mapping object (gmdm).
-  ! %dm may be PETSC_NULL (PetscObjectIsNull) when only gmdm is needed.
-  type, public :: gmdm_ptr_type
-    DM :: dm
-    type(gmdm_type), pointer :: gmdm
-  end type gmdm_ptr_type
-
   !  PetscInt, parameter :: HEX_TYPE          = 1
   !  PetscInt, parameter :: TET_TYPE          = 2
   !  PetscInt, parameter :: WEDGE_TYPE        = 3
@@ -106,8 +64,6 @@ module Geomechanics_Grid_Aux_module
 
   public :: GMGridCreate, &
             GMGridDestroy, &
-            GMDMCreate, &
-            GMDMDestroy, &
             GMCreateGMDM, &
             GMGridDMCreateVector, &
             GMGridDMCreateVectorElem, &
@@ -116,45 +72,6 @@ module Geomechanics_Grid_Aux_module
 
 
 contains
-
-! ************************************************************************** !
-!
-! GMDMCreate: Creates a geomech grid distributed mesh object
-! author: Satish Karra, LANL
-! date: 05/22/13
-!
-! ************************************************************************** !
-function GMDMCreate()
-
-  implicit none
-
-  type(gmdm_type), pointer :: GMDMCreate
-  type(gmdm_type), pointer :: gmdm
-
-  allocate(gmdm)
-  PetscObjectNullify(gmdm%is_ghosted_local)
-  PetscObjectNullify(gmdm%is_local_local)
-  PetscObjectNullify(gmdm%is_ghosted_petsc)
-  PetscObjectNullify(gmdm%is_local_petsc)
-  PetscObjectNullify(gmdm%is_ghosts_local)
-  PetscObjectNullify(gmdm%is_ghosts_petsc)
-  PetscObjectNullify(gmdm%is_local_natural)
-  PetscObjectNullify(gmdm%scatter_ltog)
-  PetscObjectNullify(gmdm%scatter_gtol)
-  PetscObjectNullify(gmdm%scatter_ltol)
-  PetscObjectNullify(gmdm%scatter_gton)
-  PetscObjectNullify(gmdm%scatter_gton_elem)
-  PetscObjectNullify(gmdm%mapping_ltog)
-  PetscObjectNullify(gmdm%mapping_ltog_elem)
-  PetscObjectNullify(gmdm%global_vec)
-  PetscObjectNullify(gmdm%local_vec)
-  PetscObjectNullify(gmdm%global_vec_elem)
-  PetscObjectNullify(gmdm%scatter_subsurf_to_geomech_ndof)
-  PetscObjectNullify(gmdm%scatter_geomech_to_subsurf_ndof)
-
-  GMDMCreate => gmdm
-
-end function GMDMCreate
 
 ! ************************************************************************** !
 !
@@ -880,7 +797,7 @@ end subroutine GMGridMapIndices
 
 ! ************************************************************************** !
 !
-! GMDMDestroy: Deallocates a geomechanics grid distributed mesh object
+! GMGridDestroy: Deallocates a geomechanics grid object
 ! author: Satish Karra, LANL
 ! date: 05/22/13
 !
@@ -946,47 +863,5 @@ subroutine GMGridDestroy(geomech_grid)
   nullify(geomech_grid)
 
 end subroutine GMGridDestroy
-
-! ************************************************************************** !
-!
-! GMGridDestroy: Deallocates a geomechanics grid object
-! author: Satish Karra, LANL
-! date: 05/22/13
-!
-! ************************************************************************** !
-subroutine GMDMDestroy(gmdm)
-
-  use Petsc_Utility_module
-
-  implicit none
-
-  type(gmdm_type), pointer :: gmdm
-
-  if (.not.associated(gmdm)) return
-
-  call PUISDestroy(gmdm%is_ghosted_local)
-  call PUISDestroy(gmdm%is_local_local)
-  call PUISDestroy(gmdm%is_ghosted_petsc)
-  call PUISDestroy(gmdm%is_local_petsc)
-  call PUISDestroy(gmdm%is_ghosts_local)
-  call PUISDestroy(gmdm%is_ghosts_petsc)
-  call PUISDestroy(gmdm%is_local_natural)
-  call PUVecScatterDestroy(gmdm%scatter_ltog)
-  call PUVecScatterDestroy(gmdm%scatter_gtol)
-  call PUVecScatterDestroy(gmdm%scatter_ltol)
-  call PUVecScatterDestroy(gmdm%scatter_gton)
-  call PUVecScatterDestroy(gmdm%scatter_gton_elem)
-  call PUISLocalToGlobalMappingDestroy(gmdm%mapping_ltog)
-  call PUISLocalToGlobalMappingDestroy(gmdm%mapping_ltog_elem)
-  call PUVecDestroy(gmdm%global_vec)
-  call PUVecDestroy(gmdm%local_vec)
-  call PUVecDestroy(gmdm%global_vec_elem)
-  call PUVecScatterDestroy(gmdm%scatter_subsurf_to_geomech_ndof)
-  call PUVecScatterDestroy(gmdm%scatter_geomech_to_subsurf_ndof)
-
-  deallocate(gmdm)
-  nullify(gmdm)
-
-end subroutine GMDMDestroy
 
 end module Geomechanics_Grid_Aux_module

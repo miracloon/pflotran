@@ -197,7 +197,6 @@ grid_obj = \
 	${common_src}communicator_structured.o \
 	${common_src}communicator_unstructured.o \
 	${common_src}discretization.o \
-	${common_src}dm_custom.o \
 	${common_src}grid.o \
 	${common_src}grid_eclipse.o \
 	${common_src}grid_eclipse_util.o \
@@ -207,6 +206,7 @@ grid_obj = \
 	${common_src}grid_unstructured_aux.o \
 	${common_src}grid_unstructured.o \
 	${common_src}grid_unstructured_polyhedra.o \
+	${common_src}ugdm_pointer.o \
 	${common_src}well_grid.o
 
 relations_obj = \
@@ -352,6 +352,7 @@ geomech_obj = \
 	${common_src}geomechanics_regression.o \
 	${common_src}geomechanics_strata.o \
 	${common_src}geomechanics_subsurface_properties.o \
+	${common_src}gmdm_pointer.o \
 	${common_src}init_subsurface_geomechanics.o\
 	${common_src}output_geomechanics.o \
 	${common_src}pm_geomechanics_force.o \

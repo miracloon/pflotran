@@ -559,6 +559,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   use Option_module
   use Option_Geomechanics_module
   use Geomechanics_Grid_Aux_module
+  use GMDM_Pointer_module
   use Realization_Subsurface_class
   use Grid_module
 

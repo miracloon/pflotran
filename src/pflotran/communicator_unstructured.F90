@@ -5,6 +5,7 @@ module Communicator_Unstructured_class
   use Grid_Unstructured_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Explicit_module
+  use UGDM_Pointer_module
 
   use PFLOTRAN_Constants_module
 
@@ -68,12 +69,12 @@ subroutine UnstructuredSetDM(this,dm_ptr)
   ! Date: 03/18/13
   !
 
-  use DM_Custom_module
+
 
   implicit none
 
   class(unstructured_communicator_type) :: this
-  type(dm_ptr_type) :: dm_ptr
+  type(ugdm_ptr_type) :: dm_ptr
 
   this%dm = dm_ptr%dm
   this%ugdm => dm_ptr%ugdm

@@ -32,11 +32,11 @@ module Communicator_Base_class
 #else
     subroutine SetDM(this,dm_ptr)
       use petscdm
-      use DM_Custom_module
+      use UGDM_Pointer_module, only : ugdm_ptr_type
       import communicator_type
       implicit none
       class(communicator_type) :: this
-      type(dm_ptr_type) :: dm_ptr
+      type(ugdm_ptr_type) :: dm_ptr
 #endif
     end subroutine
 

@@ -273,7 +273,6 @@ recursive subroutine DatasetLoad(dataset,option)
   ! Date: 06/03/13
   !
 
-  use DM_Custom_module
   use Option_module
 
   implicit none

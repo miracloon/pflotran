@@ -785,6 +785,7 @@ subroutine FactorySubsurfaceInsertWellCells(simulation)
   use Realization_Subsurface_class
   use Grid_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Grid_Unstructured_module, only : UGridEnsureRightHandRule
   use Grid_Structured_module, only : StructGridCreateTVDGhosts
   use Discretization_module
@@ -796,7 +797,6 @@ subroutine FactorySubsurfaceInsertWellCells(simulation)
   use PM_Hydrate_class
   use Option_module
   use Field_module
-  use DM_Custom_module
   use Utility_module
 
   implicit none
@@ -811,7 +811,7 @@ subroutine FactorySubsurfaceInsertWellCells(simulation)
   class(pmc_base_type), pointer :: cur_pmc, cur_pmc2
   class(pm_base_type), pointer :: cur_pm, cur_pm2
   type(option_type), pointer :: option
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(ugdm_ptr_type), pointer :: dm_ptr
   PetscInt, pointer :: well_cells(:)
   PetscInt, pointer :: h_all_global_id(:)
   PetscInt :: num_well_cells
@@ -983,7 +983,6 @@ subroutine FactorySubsurfaceInsertWellCells(simulation)
   endif
 
   ! Destroy the dummy DM's
-  ! Eventually put this in a seperate subroutine (down in dm_custom?)
   if (associated(dm_ptr)) call UGridDMDestroy(dm_ptr%ugdm)
   nullify(dm_ptr)
   call DeallocateArray(grid%nG2L)

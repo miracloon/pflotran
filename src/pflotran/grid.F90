@@ -7,6 +7,7 @@ module Grid_module
   use Grid_Unstructured_Explicit_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Polyhedra_module
+  use UGDM_Pointer_module
   use Connection_module
 
   use PFLOTRAN_Constants_module
@@ -413,12 +414,12 @@ subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type,option)
   use petscdmda
 
   use Option_module
-  use DM_Custom_module
+
 
   implicit none
 
   type(grid_type) :: grid
-  type(dm_ptr_type) :: dm_ptr
+  type(ugdm_ptr_type) :: dm_ptr
   DMDAStencilType :: sgrid_stencil_type
   type(option_type) :: option
 

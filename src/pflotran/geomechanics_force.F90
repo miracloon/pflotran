@@ -1906,6 +1906,7 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
+  use GMDM_Pointer_module
   use Option_module
   use Option_Geomechanics_module
   use Grid_Structured_module
@@ -2076,6 +2077,7 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
+  use GMDM_Pointer_module
   use Option_module
   use Option_Geomechanics_module
 
@@ -2834,6 +2836,7 @@ subroutine GeomechMapMaterialIdsToFlow(realization,geomech_realization)
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
   use Geomechanics_Grid_Aux_module
+  use GMDM_Pointer_module
   use Grid_module
   use Material_Aux_module
   use Option_module

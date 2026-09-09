@@ -1,7 +1,9 @@
 module Output_HDF5_module
 
 #include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscdm.h"
   use petscvec
+  use petscdm
   use hdf5
 
   use HDF5_Aux_module
@@ -1515,6 +1517,7 @@ subroutine OutputHDF5WriteCoordinatesUGrid(grid,option,file_id)
   use Grid_module
   use Option_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Variables_module
 
   implicit none
@@ -1549,6 +1552,7 @@ subroutine OutputHDF5WriteCoordinatesUGrid(grid,option,file_id)
   ! when PETSc is configured with --with-64-bit-indices=yes.
   integer, pointer :: int_array(:)
   type(ugdm_type),pointer :: ugdm_element
+  type(ugdm_ptr_type) :: dm_ptr
   PetscErrorCode :: ierr
 
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
@@ -1660,10 +1664,13 @@ subroutine OutputHDF5WriteCoordinatesUGrid(grid,option,file_id)
   !
   !  Write elements
   !
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr,EIGHT_INTEGER,option)
+  ugdm_element => dm_ptr%ugdm
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,global_vec, &
                            GLOBAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,natural_vec, &
                            NATURAL,option)
   call OutputGetCellVertices(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
@@ -1779,6 +1786,7 @@ subroutine OutputHDF5WriteCoordUGridXDMF(realization_base,option,file_id)
   use Grid_module
   use Option_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Variables_module
 
   implicit none
@@ -1816,6 +1824,7 @@ subroutine OutputHDF5WriteCoordUGridXDMF(realization_base,option,file_id)
   ! when PETSc is configured with --with-64-bit-indices=yes.
   integer, pointer :: int_array(:)
   type(ugdm_type),pointer :: ugdm_element, ugdm_cell
+  type(ugdm_ptr_type) :: dm_ptr
   PetscErrorCode :: ierr
 
   PetscInt :: TET_ID_XDMF = 6
@@ -1929,10 +1938,13 @@ subroutine OutputHDF5WriteCoordUGridXDMF(realization_base,option,file_id)
   !
   !  Write elements
   !
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr,EIGHT_INTEGER,option)
+  ugdm_element => dm_ptr%ugdm
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,global_vec, &
                            GLOBAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,natural_vec, &
                            NATURAL,option)
   call OutputGetCellVertices(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
@@ -2056,12 +2068,15 @@ subroutine OutputHDF5WriteCoordUGridXDMF(realization_base,option,file_id)
   call OutputGetCellCoordinates(grid, global_z_cell_vec,Z_COORDINATE)
 
 
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm_cell,ONE_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_cell, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr,ONE_INTEGER,option)
+  ugdm_cell => dm_ptr%ugdm
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr, &
                            natural_x_cell_vec,NATURAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_cell, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr, &
                            natural_y_cell_vec,NATURAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_cell, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr, &
                            natural_z_cell_vec,NATURAL,option)
 
   call VecScatterBegin(ugdm_cell%scatter_gton,global_x_cell_vec, &
@@ -2288,6 +2303,7 @@ subroutine OutputHDF5DetermineNumVertices(realization_base,option)
   use Grid_module
   use Option_module
   use Grid_Unstructured_Aux_module
+  use UGDM_Pointer_module
   use Variables_module
 
   implicit none
@@ -2303,15 +2319,18 @@ subroutine OutputHDF5DetermineNumVertices(realization_base,option)
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec, natural_vec
   type(ugdm_type),pointer :: ugdm_element
+  type(ugdm_ptr_type) :: dm_ptr
   PetscErrorCode :: ierr
 
   grid => realization_base%patch%grid
 
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER, &
-                       option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%ugdm)
+  call UGridCreateUGDM(grid%unstructured_grid,dm_ptr,EIGHT_INTEGER,option)
+  ugdm_element => dm_ptr%ugdm
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,global_vec, &
                            GLOBAL,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+  call UGridDMCreateVector(grid%unstructured_grid,dm_ptr,natural_vec, &
                            NATURAL,option)
   call OutputGetCellVertices(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
