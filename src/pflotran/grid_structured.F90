@@ -220,7 +220,7 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
   PetscInt :: ndof
   PetscInt :: stencil_width
   DMDAStencilType :: stencil_type
-  character(len=*), optional :: options_prefix
+  character(len=*) :: options_prefix
 
   PetscErrorCode :: ierr
 
@@ -238,9 +238,7 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
   if (ndof > 1) then
     call DMSetMatType(da,MATBAIJ,ierr);CHKERRQ(ierr)
   endif
-  if (present(options_prefix)) then
-    call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
-  endif
+  call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
   call DMSetFromOptions(da,ierr);CHKERRQ(ierr)
   call DMSetup(da,ierr);CHKERRQ(ierr)
   call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &

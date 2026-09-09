@@ -760,7 +760,7 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option, &
   type(ugdm_type), pointer :: ugdm
   PetscInt :: ndof
   type(option_type) :: option
-  character(len=*), optional :: options_prefix
+  character(len=*) :: options_prefix
 
   Vec :: global_vec, local_vec
   !Mat :: jac
@@ -773,9 +773,7 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option, &
   else
     call DMSetMatType(da,MATAIJ,ierr);CHKERRQ(ierr)
   endif
-  if (present(options_prefix)) then
-    call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
-  endif
+  call DMSetOptionsPrefix(da,options_prefix,ierr);CHKERRQ(ierr)
   call DMSetFromOptions(da,ierr);CHKERRQ(ierr)
 
   ! Create UGDM

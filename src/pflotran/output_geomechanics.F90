@@ -258,7 +258,7 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   type(geomech_grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(geomech_patch_type), pointer :: patch
-  type(gmdm_type), pointer :: gmdm_element
+  type(gmdm_ptr_type) :: dm_ptr
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
@@ -269,15 +269,15 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   grid => patch%geomech_grid
   option => geomech_realization%option
 
-  call GMCreateGMDM(grid,gmdm_element,EIGHT_INTEGER,option)
-  call GMGridDMCreateVectorElem(grid,gmdm_element,global_vec, &
-                            GLOBAL,option)
-  call GMGridDMCreateVectorElem(grid,gmdm_element,natural_vec, &
-                            NATURAL,option)
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%gmdm)
+  call GMCreateGMDM(grid,dm_ptr,EIGHT_INTEGER,option)
+  call GMGridDMCreateVectorElem(grid,dm_ptr,global_vec,GLOBAL,option)
+  call GMGridDMCreateVectorElem(grid,dm_ptr,natural_vec,NATURAL,option)
   call OutputGetCellVerticesGeomech(grid,global_vec)
-  call VecScatterBegin(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
+  call VecScatterBegin(dm_ptr%gmdm%scatter_gton_elem,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
+  call VecScatterEnd(dm_ptr%gmdm%scatter_gton_elem,global_vec,natural_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecGetArray(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization,vec_ptr, &
@@ -287,7 +287,7 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   call VecRestoreArray(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
-  call GMDMDestroy(gmdm_element)
+  call GMDMDestroy(dm_ptr%gmdm)
 
 end subroutine WriteTecplotGeomechGridElements
 
@@ -1472,7 +1472,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   ! must be 'integer' so that ibuffer does not switch to 64-bit integers
   ! when PETSc is configured with --with-64-bit-indices=yes.
   integer, pointer :: int_array(:)
-  type(gmdm_type),pointer :: gmdm_element
+  type(gmdm_ptr_type) :: dm_ptr
 
   PetscErrorCode :: ierr
 
@@ -1606,15 +1606,15 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   !  Write elements
   !
 
-  call GMCreateGMDM(grid,gmdm_element,EIGHT_INTEGER,option)
-  call GMGridDMCreateVectorElem(grid,gmdm_element,global_vec, &
-                            GLOBAL,option)
-  call GMGridDMCreateVectorElem(grid,gmdm_element,natural_vec, &
-                            NATURAL,option)
+  PetscObjectNullify(dm_ptr%dm)
+  nullify(dm_ptr%gmdm)
+  call GMCreateGMDM(grid,dm_ptr,EIGHT_INTEGER,option)
+  call GMGridDMCreateVectorElem(grid,dm_ptr,global_vec,GLOBAL,option)
+  call GMGridDMCreateVectorElem(grid,dm_ptr,natural_vec,NATURAL,option)
   call OutputGetCellVerticesGeomech(grid,global_vec)
-  call VecScatterBegin(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
+  call VecScatterBegin(dm_ptr%gmdm%scatter_gton_elem,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
+  call VecScatterEnd(dm_ptr%gmdm%scatter_gton_elem,global_vec,natural_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecGetArray(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
@@ -1713,7 +1713,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   call VecRestoreArray(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
-  call GMDMDestroy(gmdm_element)
+  call GMDMDestroy(dm_ptr%gmdm)
 
 end subroutine WriteHDF5CoordinatesXDMFGeomech
 

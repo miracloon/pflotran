@@ -38,6 +38,7 @@ subroutine FactoryGeomechanicsInitialize(simulation)
   use PMC_Geomechanics_class
   use PFLOTRAN_Constants_module
   use Geomechanics_Discretization_module
+  use Geomechanics_Grid_Aux_module
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
   use Geomechanics_Regression_module

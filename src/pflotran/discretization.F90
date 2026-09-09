@@ -735,7 +735,7 @@ subroutine DiscretizationCreateDMs(discretization, o_nflowdof, o_ntrandof, &
   ndof = 1
   call DiscretizationCreateDM(discretization,discretization%dm_1dof, &
                               ndof,discretization%stencil_width, &
-                              discretization%stencil_type,option)
+                              discretization%stencil_type,option,'')
 
   if (o_nflowdof > 0) then
     ndof = o_nflowdof
@@ -760,9 +760,10 @@ subroutine DiscretizationCreateDMs(discretization, o_nflowdof, o_ntrandof, &
 
   if (o_ngeomechdof > 0) then
     ndof = o_n_stress_strain_dof
-    call DiscretizationCreateDM(discretization,discretization%dm_n_stress_strain_dof, &
+    call DiscretizationCreateDM(discretization, &
+                                discretization%dm_n_stress_strain_dof, &
                                 ndof,discretization%stencil_width, &
-                                discretization%stencil_type,option)
+                                discretization%stencil_type,option,'')
   endif
 
   select case(discretization%itype)
@@ -800,7 +801,7 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
   PetscInt :: stencil_width
   DMDAStencilType :: stencil_type
   type(option_type) :: option
-  character(len=*), optional :: options_prefix
+  character(len=*) :: options_prefix
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)

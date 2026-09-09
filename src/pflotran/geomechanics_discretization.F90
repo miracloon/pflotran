@@ -12,11 +12,6 @@ module Geomechanics_Discretization_module
 
   private
 
-  type, public :: gmdm_ptr_type
-    DM :: dm  ! PETSc DM
-    type(gmdm_type), pointer :: gmdm
-  end type gmdm_ptr_type
-
   type, public :: geomech_discretization_type
     PetscInt :: itype                          ! type of discretization (e.g. structured, unstructured, etc.)
     character(len=MAXWORDLENGTH) :: ctype      ! name of discretization
@@ -170,8 +165,7 @@ subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr, &
       endif
       call DMSetOptionsPrefix(dm_ptr%dm,"geomech_",ierr);CHKERRQ(ierr)
       call DMSetFromOptions(dm_ptr%dm,ierr);CHKERRQ(ierr)
-      call GMCreateGMDM(geomech_discretization%grid, &
-                        dm_ptr%gmdm,ndof,option,dm_ptr%dm)
+      call GMCreateGMDM(geomech_discretization%grid,dm_ptr,ndof,option)
       call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm, &
                                              dm_ptr%gmdm%scatter_gtol, &
                                              ierr);CHKERRQ(ierr)
@@ -206,8 +200,8 @@ subroutine GeomechDiscretizationCreateVector(geomech_discretization, &
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
                                                    dm_index)
 
-  call GMGridDMCreateVector(geomech_discretization%grid,dm_ptr%gmdm,vector, &
-                            vector_type,option,dm_ptr%dm)
+  call GMGridDMCreateVector(geomech_discretization%grid,dm_ptr,vector, &
+                            vector_type,option)
 
   call VecSet(vector,0.d0,ierr);CHKERRQ(ierr)
 

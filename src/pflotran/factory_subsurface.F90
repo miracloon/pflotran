@@ -851,7 +851,7 @@ subroutine FactorySubsurfaceInsertWellCells(simulation)
     allocate(dm_ptr)
     call DiscretizationCreateDM(discretization, dm_ptr, &
                                  ONE_INTEGER, discretization%stencil_width, &
-                                 discretization%stencil_type, option)
+                                 discretization%stencil_type, option, '')
 
     grid => discretization%grid
     select case(discretization%itype)

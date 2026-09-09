@@ -1366,6 +1366,7 @@ subroutine InitSubsurfGeomechInitSimulation(simulation, pm_geomech)
   use PMC_Geomechanics_class
   use PFLOTRAN_Constants_module
   use Geomechanics_Discretization_module
+  use Geomechanics_Grid_Aux_module
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
   use Geomechanics_Regression_module
@@ -1573,6 +1574,7 @@ subroutine InitSubsurfGeomechChkInactiveCells(geomech_realization, &
   use Realization_Subsurface_class
   use Geomechanics_Realization_class
   use Geomechanics_Discretization_module
+  use Geomechanics_Grid_Aux_module
   use Option_module
 
   implicit none
