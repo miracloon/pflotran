@@ -712,14 +712,16 @@ recursive subroutine PMERTInitializeRun(this)
     if (local_id <= 0) cycle ! not on process
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) then
-      option%io_buffer = 'Electrode in inactive grid cell: ' // &
+      option%io_buffer = 'Electrode (' // trim(StringWrite(i)) // &
+        ') in inactive grid cell: ' // &
         trim(StringWrite(grid%nG2A(ghosted_id)))
       call PrintErrMsgNoStopByRank(option)
       flag = PETSC_TRUE
     else
       ! Check if the electrode is in a prescribed condition cell
       if (vec_ptr(local_id) > 0.d0) then
-        option%io_buffer = 'Electrode in prescribed condition cell: ' // &
+        option%io_buffer = 'Electrode (' // trim(StringWrite(i)) // &
+          ') in prescribed condition cell: ' // &
           trim(StringWrite(grid%nG2A(ghosted_id)))
         call PrintErrMsgNoStopByRank(option)
         flag = PETSC_TRUE
