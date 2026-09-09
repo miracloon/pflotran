@@ -419,7 +419,7 @@ subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type,option)
   implicit none
 
   type(grid_type) :: grid
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   DMDAStencilType :: sgrid_stencil_type
   type(option_type) :: option
 

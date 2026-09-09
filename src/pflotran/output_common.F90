@@ -904,7 +904,7 @@ subroutine OutputGetFaceVelUGrid(realization_base)
   type(ugdm_type),pointer :: ugdm
   type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -1205,7 +1205,7 @@ subroutine OutputGetFaceFlowrateUGrid(realization_base)
   type(ugdm_type),pointer :: ugdm
   type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -1411,7 +1411,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   type(ugdm_type), pointer :: ugdm
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
 
 
   PetscReal, pointer :: vec_ptr(:)
@@ -1831,7 +1831,7 @@ subroutine OutputCollectVelocityOrFlux(realization_base, iphase, direction, &
   type(field_type), pointer :: field
   type(grid_structured_type), pointer :: structured_grid
   type(option_type), pointer :: option
-  type(ugdm_ptr_type), pointer :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
 
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_size

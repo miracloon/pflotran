@@ -3,9 +3,7 @@ module Communicator_Unstructured_class
   use petscdm
   use Communicator_Base_class
   use Grid_Unstructured_module
-  use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Explicit_module
-  use UGDM_Pointer_module
 
   use PFLOTRAN_Constants_module
 
@@ -14,10 +12,7 @@ module Communicator_Unstructured_class
   private
 
   type, public, extends(communicator_type) :: unstructured_communicator_type
-    DM :: dm
-    type(ugdm_type), pointer :: ugdm
   contains
-    procedure, public :: SetDM => UnstructuredSetDM
     procedure, public :: GlobalToLocal => UnstructuredGlobalToLocal
     procedure, public :: LocalToGlobal => UnstructuredLocalToGlobal
     procedure, public :: LocalToLocal => UnstructuredLocalToLocal
@@ -52,34 +47,12 @@ function UnstructuredCommunicatorCreate()
   class(unstructured_communicator_type), pointer :: communicator
 
   allocate(communicator)
-  nullify(communicator%ugdm)
-  PetscObjectNullify(communicator%dm)
+  PetscObjectNullify(communicator%dm_ptr%dm)
+  nullify(communicator%dm_ptr%ugdm)
 
   UnstructuredCommunicatorCreate => communicator
 
 end function UnstructuredCommunicatorCreate
-
-! ************************************************************************** !
-
-subroutine UnstructuredSetDM(this,dm_ptr)
-  !
-  ! Sets pointer to DM
-  !
-  ! Author: Glenn Hammond
-  ! Date: 03/18/13
-  !
-
-
-
-  implicit none
-
-  class(unstructured_communicator_type) :: this
-  type(ugdm_ptr_type) :: dm_ptr
-
-  this%dm = dm_ptr%dm
-  this%ugdm => dm_ptr%ugdm
-
-end subroutine UnstructuredSetDM
 
 ! ************************************************************************** !
 
@@ -101,9 +74,9 @@ subroutine UnstructuredGlobalToLocal(this,source,destination)
 
   PetscErrorCode :: ierr
 
-  call DMGlobalToLocalBegin(this%dm,source,INSERT_VALUES,destination, &
+  call DMGlobalToLocalBegin(this%dm_ptr%dm,source,INSERT_VALUES,destination, &
                             ierr);CHKERRQ(ierr)
-  call DMGlobalToLocalEnd(this%dm,source,INSERT_VALUES,destination, &
+  call DMGlobalToLocalEnd(this%dm_ptr%dm,source,INSERT_VALUES,destination, &
                           ierr);CHKERRQ(ierr)
 
 end subroutine UnstructuredGlobalToLocal
@@ -126,10 +99,10 @@ subroutine UnstructuredLocalToGlobal(this,source,destination)
 
   PetscErrorCode :: ierr
 
-  call VecScatterBegin(this%ugdm%scatter_ltog,source,destination, &
+  call VecScatterBegin(this%dm_ptr%ugdm%scatter_ltog,source,destination, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(this%ugdm%scatter_ltog,source,destination,INSERT_VALUES, &
-                     SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(this%dm_ptr%ugdm%scatter_ltog,source,destination, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
 end subroutine UnstructuredLocalToGlobal
 
@@ -151,10 +124,10 @@ subroutine UnstructuredLocalToLocal(this,source,destination)
 
   PetscErrorCode :: ierr
 
-  call VecScatterBegin(this%ugdm%scatter_ltol,source,destination, &
+  call VecScatterBegin(this%dm_ptr%ugdm%scatter_ltol,source,destination, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(this%ugdm%scatter_ltol,source,destination,INSERT_VALUES, &
-                     SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(this%dm_ptr%ugdm%scatter_ltol,source,destination, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
 end subroutine UnstructuredLocalToLocal
 
@@ -176,10 +149,10 @@ subroutine UnstructuredGlobalToNatural(this,source,destination)
 
   PetscErrorCode :: ierr
 
-  call VecScatterBegin(this%ugdm%scatter_gton,source,destination, &
+  call VecScatterBegin(this%dm_ptr%ugdm%scatter_gton,source,destination, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(this%ugdm%scatter_gton,source,destination,INSERT_VALUES, &
-                     SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(this%dm_ptr%ugdm%scatter_gton,source,destination, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
 end subroutine UnstructuredGlobalToNatural
 
@@ -201,10 +174,10 @@ subroutine UnstructuredNaturalToGlobal(this,source,destination)
 
   PetscErrorCode :: ierr
 
-  call VecScatterBegin(this%ugdm%scatter_gton,source,destination, &
+  call VecScatterBegin(this%dm_ptr%ugdm%scatter_gton,source,destination, &
                        INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(this%ugdm%scatter_gton,source,destination,INSERT_VALUES, &
-                     SCATTER_REVERSE,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(this%dm_ptr%ugdm%scatter_gton,source,destination, &
+                     INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
 
 end subroutine UnstructuredNaturalToGlobal
 
@@ -227,7 +200,7 @@ subroutine UnstructuredAONaturalToPetsc(this,array)
   PetscErrorCode :: ierr
 
   n = size(array)
-  call AOApplicationToPetsc(this%ugdm%ao_natural_to_petsc,n,array, &
+  call AOApplicationToPetsc(this%dm_ptr%ugdm%ao_natural_to_petsc,n,array, &
                             ierr);CHKERRQ(ierr)
 
 end subroutine UnstructuredAONaturalToPetsc
@@ -249,14 +222,14 @@ subroutine UnstructuredCommunicatorDestroy(this)
 
   !geh: all DMs are currently destroyed in realization.  This DM is solely
   !     a pointer.  This will need to change, but skip for now.
-  if (associated(this%ugdm)) then
-    !call UGridDMDestroy(this%ugdm)
+  if (associated(this%dm_ptr%ugdm)) then
+    !call UGridDMDestroy(this%dm_ptr%ugdm)
   endif
-  nullify(this%ugdm)
-  if (.not.PetscObjectIsNull(this%dm)) then
-    !call DMDestroy(this%dm,ierr)
+  nullify(this%dm_ptr%ugdm)
+  if (.not.PetscObjectIsNull(this%dm_ptr%dm)) then
+    !call DMDestroy(this%dm_ptr%dm,ierr)
   endif
-  PetscObjectNullify(this%dm)
+  PetscObjectNullify(this%dm_ptr%dm)
 
 end subroutine UnstructuredCommunicatorDestroy
 

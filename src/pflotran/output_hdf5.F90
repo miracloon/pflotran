@@ -1552,7 +1552,7 @@ subroutine OutputHDF5WriteCoordinatesUGrid(grid,option,file_id)
   ! when PETSc is configured with --with-64-bit-indices=yes.
   integer, pointer :: int_array(:)
   type(ugdm_type),pointer :: ugdm_element
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   PetscErrorCode :: ierr
 
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
@@ -1824,7 +1824,7 @@ subroutine OutputHDF5WriteCoordUGridXDMF(realization_base,option,file_id)
   ! when PETSc is configured with --with-64-bit-indices=yes.
   integer, pointer :: int_array(:)
   type(ugdm_type),pointer :: ugdm_element, ugdm_cell
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   PetscErrorCode :: ierr
 
   PetscInt :: TET_ID_XDMF = 6
@@ -2319,7 +2319,7 @@ subroutine OutputHDF5DetermineNumVertices(realization_base,option)
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec, natural_vec
   type(ugdm_type),pointer :: ugdm_element
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   PetscErrorCode :: ierr
 
   grid => realization_base%patch%grid

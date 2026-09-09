@@ -172,15 +172,12 @@ communicator_base.o : \
 communicator_structured.o : \
   communicator_base.o \
   grid_structured.o \
-  pflotran_constants.o \
-  ugdm_pointer.o
+  pflotran_constants.o
 communicator_unstructured.o : \
   communicator_base.o \
   grid_unstructured.o \
-  grid_unstructured_aux.o \
   grid_unstructured_explicit.o \
-  pflotran_constants.o \
-  ugdm_pointer.o
+  pflotran_constants.o
 condition.o : \
   dataset.o \
   dataset_ascii.o \

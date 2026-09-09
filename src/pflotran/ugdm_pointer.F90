@@ -38,12 +38,13 @@ module UGDM_Pointer_module
     AO :: ao_natural_to_petsc
   end type ugdm_type
 
-  ! PETSc DM plus the unstructured scatter/mapping object (ugdm).
+  ! Subsurface PETSc DM plus optional unstructured scatter object (ugdm).
+  ! Structured uses %dm only (%ugdm null). Unstructured may use both.
   ! %dm may be PETSC_NULL (PetscObjectIsNull) when only ugdm is needed.
-  type, public :: ugdm_ptr_type
+  type, public :: dm_ptr_type
     DM :: dm
     type(ugdm_type), pointer :: ugdm
-  end type ugdm_ptr_type
+  end type dm_ptr_type
 
   public :: UGDMCreate, &
             UGridDMDestroy

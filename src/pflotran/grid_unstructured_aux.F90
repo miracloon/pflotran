@@ -359,7 +359,7 @@ subroutine UGridCreateUGDM(unstructured_grid,dm_ptr,ndof,option)
   implicit none
 
   type(grid_unstructured_type) :: unstructured_grid
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   PetscInt :: ndof
   type(option_type) :: option
 
@@ -702,7 +702,7 @@ subroutine UGridCreateUGDMShell(unstructured_grid,dm_ptr,ndof,option, &
   implicit none
 
   type(grid_unstructured_type) :: unstructured_grid
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   PetscInt :: ndof
   type(option_type) :: option
   character(len=*) :: options_prefix
@@ -897,7 +897,7 @@ subroutine UGridDMCreateVector(unstructured_grid,dm_ptr,vec,vec_type,option)
   implicit none
 
   type(grid_unstructured_type) :: unstructured_grid
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   Vec :: vec
   PetscInt :: vec_type
   type(option_type) :: option

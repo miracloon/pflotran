@@ -3,6 +3,7 @@ module Communicator_Base_class
 #include "petsc/finclude/petscvec.h"
    use petscvec
    use petscsys
+   use UGDM_Pointer_module, only : dm_ptr_type
 
    use PFLOTRAN_Constants_module
 
@@ -11,8 +12,9 @@ module Communicator_Base_class
   private
 
   type, abstract, public :: communicator_type
+    type(dm_ptr_type) :: dm_ptr
   contains
-    procedure(SetDM), public, deferred :: SetDM
+    procedure, public :: SetDM => CommunicatorBaseSetDM
     procedure(VecToVec), public, deferred :: GlobalToLocal
     procedure(VecToVec), public, deferred :: LocalToGlobal
     procedure(VecToVec), public, deferred :: LocalToLocal
@@ -23,22 +25,6 @@ module Communicator_Base_class
   end type communicator_type
 
   abstract interface
-
-#ifdef SIMPLIFY
-    subroutine SetDM(this)
-      import communicator_type
-      implicit none
-      class(communicator_type) :: this
-#else
-    subroutine SetDM(this,dm_ptr)
-      use petscdm
-      use UGDM_Pointer_module, only : ugdm_ptr_type
-      import communicator_type
-      implicit none
-      class(communicator_type) :: this
-      type(ugdm_ptr_type) :: dm_ptr
-#endif
-    end subroutine
 
     subroutine VecToVec(this,source,destination)
       use petscvec
@@ -65,5 +51,19 @@ module Communicator_Base_class
     end subroutine BaseDestroy
 
   end interface
+
+contains
+
+! ************************************************************************** !
+
+subroutine CommunicatorBaseSetDM(this,dm_ptr)
+  implicit none
+
+  class(communicator_type) :: this
+  type(dm_ptr_type) :: dm_ptr
+
+  this%dm_ptr = dm_ptr
+
+end subroutine CommunicatorBaseSetDM
 
 end module Communicator_Base_class

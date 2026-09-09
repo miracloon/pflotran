@@ -811,7 +811,7 @@ subroutine FactorySubsurfaceInsertWellCells(simulation)
   class(pmc_base_type), pointer :: cur_pmc, cur_pmc2
   class(pm_base_type), pointer :: cur_pm, cur_pm2
   type(option_type), pointer :: option
-  type(ugdm_ptr_type), pointer :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   PetscInt, pointer :: well_cells(:)
   PetscInt, pointer :: h_all_global_id(:)
   PetscInt :: num_well_cells

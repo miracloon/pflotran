@@ -1689,7 +1689,7 @@ subroutine OutputTecplotWriteUGridElements(fid,realization_base)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(ugdm_type), pointer :: ugdm_element
-  type(ugdm_ptr_type) :: dm_ptr
+  type(dm_ptr_type) :: dm_ptr
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
