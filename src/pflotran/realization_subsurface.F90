@@ -2975,7 +2975,8 @@ subroutine RealizationProcessOutputVarList(output_variable_list,realization)
                                   archie_saturation_exp_index, &
                                   archie_tortuosity_index, &
                                   surf_elec_conduct_index, &
-                                  ws_clay_conduct_index
+                                  ws_clay_conduct_index, &
+                                  mean_soil_grain_size_index
   use Option_module
   use Output_Aux_module
   use Parameter_module
@@ -3039,6 +3040,11 @@ subroutine RealizationProcessOutputVarList(output_variable_list,realization)
         endif
       case(WAXMAN_SMITS_CLAY_CONDUCTIVITY)
         if (ws_clay_conduct_index == 0) then
+          error_flag = PETSC_TRUE
+          error_string = ' - must be defined under MATERIAL_PROPERTY'
+        endif
+      case(MEAN_SOIL_GRAIN_SIZE)
+        if (mean_soil_grain_size_index == 0) then
           error_flag = PETSC_TRUE
           error_string = ' - must be defined under MATERIAL_PROPERTY'
         endif

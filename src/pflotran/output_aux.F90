@@ -1487,6 +1487,11 @@ subroutine OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
       name = 'Solute Concentration'
       category = OUTPUT_GENERIC
       id = SOLUTE_CONCENTRATION
+    case ('MEAN_SOIL_GRAIN_SIZE')
+      units = 'm'
+      name = 'Mean Soil Grain Size'
+      category = OUTPUT_GENERIC
+      id = MEAN_SOIL_GRAIN_SIZE
     case ('PARAMETER')
       units = '?'
       name = 'Parameter'

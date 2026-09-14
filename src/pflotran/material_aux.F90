@@ -45,6 +45,7 @@ module Material_Aux_module
   PetscInt, public :: ws_clay_conduct_index
   PetscInt, public :: tortuosity_yy_index
   PetscInt, public :: tortuosity_zz_index
+  PetscInt, public :: mean_soil_grain_size_index
   PetscInt, public :: max_material_index
 
   type, public :: material_auxvar_type
@@ -172,7 +173,8 @@ function MaterialAuxCreate(option)
                                SURFACE_ELECTRICAL_CONDUCTIVITY, &
                                WAXMAN_SMITS_CLAY_CONDUCTIVITY, &
                                NUMBER_SECONDARY_CELLS, &
-                               TORTUOSITY_Y, TORTUOSITY_Z
+                               TORTUOSITY_Y, TORTUOSITY_Z, &
+                               MEAN_SOIL_GRAIN_SIZE
 
   implicit none
 
@@ -224,6 +226,9 @@ function MaterialAuxCreate(option)
     call MaterialAuxInitSoilPropertyMap(aux,tortuosity_zz_index, &
                                         TORTUOSITY_Z, &
                                         'Anisotropic Tortuosity Z')
+    call MaterialAuxInitSoilPropertyMap(aux,mean_soil_grain_size_index, &
+                                        MEAN_SOIL_GRAIN_SIZE, &
+                                        'Mean Soil Grain Size')
     ! ADD_SOIL_PROPERTY_INDEX_HERE
     do i = 1, max_material_index
       if (Uninitialized(aux%soil_properties_ivar(i))) then
@@ -780,7 +785,8 @@ function MaterialAuxVarGetSoilPropIndex(ivar)
                                SURFACE_ELECTRICAL_CONDUCTIVITY, &
                                WAXMAN_SMITS_CLAY_CONDUCTIVITY, &
                                NUMBER_SECONDARY_CELLS, &
-                               TORTUOSITY_Y, TORTUOSITY_Z
+                               TORTUOSITY_Y, TORTUOSITY_Z, &
+                               MEAN_SOIL_GRAIN_SIZE
 
   implicit none
 
@@ -811,6 +817,8 @@ function MaterialAuxVarGetSoilPropIndex(ivar)
       index_ = tortuosity_yy_index
     case(TORTUOSITY_Z)
       index_ = tortuosity_zz_index
+    case(MEAN_SOIL_GRAIN_SIZE)
+      index_ = mean_soil_grain_size_index
     ! ADD_SOIL_PROPERTY_INDEX_HERE
     case default
       print *, 'Unrecognized variable in MaterialAuxVarGetSoilPropIndex: ', &
