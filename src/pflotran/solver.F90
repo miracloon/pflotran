@@ -427,13 +427,19 @@ subroutine SolverCreateSNES(solver,comm,options_prefix,option)
   call SNESGetType(solver%snes,solver%snes_type,ierr);CHKERRQ(ierr)
 
   select case(solver%snes_type)
+    ! Note: Currently, nothing special needs to be done for any SNES type,
+    !       but the skeleton below can be filled in we determine that any
+    !       of these cases needs special handling or settings.
     case(SNESNEWTONLS,SNESNEWTONTR)
 
     case(SNESNEWTONTRDC)
 
     case default
-      option%io_buffer = 'Unsupported SNES type: ' // trim(solver%snes_type)
-      call PrintErrMsg(option)
+!   We currently allow the use of all SNES types, but, if some should not be
+!   permitted, adjust the 'select case' logic appropriately and uncomment
+!   the following:
+!      option%io_buffer = 'Unsupported SNES type: ' // trim(solver%snes_type)
+!      call PrintErrMsg(option)
   end select
 
   ! grab handles for ksp and pc
