@@ -9,6 +9,10 @@ module Reaction_Sandbox_Amendment_class
 
   implicit none
 
+  PetscInt, parameter :: MODEL_CONSTANT = 0
+  PetscInt, parameter :: MODEL_FILTRATION = 1
+  PetscInt, parameter :: MODEL_TEMPERATURE = 2
+
   private
 
   type, public, &
@@ -23,33 +27,32 @@ module Reaction_Sandbox_Amendment_class
     character(len=MAXWORDLENGTH) :: name_aqueous
     character(len=MAXWORDLENGTH) :: name_immobile
 
-    !Decay rates (Temperature model)
-    PetscReal :: logDref_aqueous
-    PetscReal :: Tref_aqueous
-    PetscReal :: zT_aqueous
-    PetscReal :: nAq_aqueous
+    PetscInt :: aqueous_decay_model
+    PetscReal :: aqueous_decay_rate
+    PetscReal :: aqueous_logDref
+    PetscReal :: aqueous_Tref
+    PetscReal :: aqueous_zT
+    PetscReal :: aqueous_n
 
-    PetscReal :: logDref_adsorbed
-    PetscReal :: Tref_adsorbed
-    PetscReal :: zT_adsorbed
-    PetscReal :: nAq_adsorbed
+    PetscInt :: adsorbed_decay_model
+    PetscReal :: adsorbed_decay_rate
+    PetscReal :: adsorbed_logDref
+    PetscReal :: adsorbed_Tref
+    PetscReal :: adsorbed_zT
+    PetscReal :: adsorbed_n
 
-    !Decay rates (Constant)
-    PetscReal :: decay_aqueous
-    PetscReal :: decay_adsorbed
-
-    !Attachment rate (Filtration Model)
-    PetscReal :: diam_collector
-    PetscReal :: diam_particle
+    PetscInt :: attachment_model
+    PetscReal :: attachment_rate_constant
+    PetscReal :: collector_diameter
+    PetscReal :: particle_diameter
     PetscReal :: hamaker_constant
     PetscReal :: BOLTZMANN_CONSTANT = 1.380649d-23 !J/K
                  !(Not found on pflotran_constants.f90)
-    PetscReal :: density_particle
-    PetscReal :: alpha_efficiency
+    PetscReal :: particle_density
+    PetscReal :: attachment_efficiency
 
-    !Attachment/Detachment rates (Constant)
-    PetscReal :: rate_attachment
-    PetscReal :: rate_detachment
+    PetscInt :: detachment_model
+    PetscReal :: detachment_rate_constant
 
     !Debug?
     PetscBool :: debug_option
@@ -91,33 +94,31 @@ function AmendmentCreate()
   AmendmentCreate%name_aqueous = ''
   AmendmentCreate%name_immobile = ''
 
-  !Decay rates (Temperature model)
-  AmendmentCreate%logDref_aqueous = 0.d0
-  AmendmentCreate%Tref_aqueous = 0.d0
-  AmendmentCreate%zT_aqueous = 0.d0
-  AmendmentCreate%nAq_aqueous = 0.d0
+  AmendmentCreate%aqueous_decay_model = UNINITIALIZED_INTEGER
+  AmendmentCreate%aqueous_decay_rate = UNINITIALIZED_DOUBLE
+  AmendmentCreate%aqueous_logDref = UNINITIALIZED_DOUBLE
+  AmendmentCreate%aqueous_Tref = UNINITIALIZED_DOUBLE
+  AmendmentCreate%aqueous_zT = UNINITIALIZED_DOUBLE
+  AmendmentCreate%aqueous_n = UNINITIALIZED_DOUBLE
 
-  AmendmentCreate%logDref_adsorbed = 0.d0
-  AmendmentCreate%Tref_adsorbed = 0.d0
-  AmendmentCreate%zT_adsorbed = 0.d0
-  AmendmentCreate%nAq_adsorbed = 0.d0
+  AmendmentCreate%adsorbed_decay_model = UNINITIALIZED_INTEGER
+  AmendmentCreate%adsorbed_decay_rate = UNINITIALIZED_DOUBLE
+  AmendmentCreate%adsorbed_logDref = UNINITIALIZED_DOUBLE
+  AmendmentCreate%adsorbed_Tref = UNINITIALIZED_DOUBLE
+  AmendmentCreate%adsorbed_zT = UNINITIALIZED_DOUBLE
+  AmendmentCreate%adsorbed_n = UNINITIALIZED_DOUBLE
 
-  !Decay rates (Constant)
-  AmendmentCreate%decay_aqueous = -1.d0
-  AmendmentCreate%decay_adsorbed = -1.d0
+  AmendmentCreate%attachment_model = UNINITIALIZED_INTEGER
+  AmendmentCreate%attachment_rate_constant = UNINITIALIZED_DOUBLE
+  AmendmentCreate%collector_diameter = UNINITIALIZED_DOUBLE
+  AmendmentCreate%particle_diameter = UNINITIALIZED_DOUBLE
+  AmendmentCreate%hamaker_constant = UNINITIALIZED_DOUBLE
+  AmendmentCreate%particle_density = UNINITIALIZED_DOUBLE
+  AmendmentCreate%attachment_efficiency = UNINITIALIZED_DOUBLE
 
-  !Filtration Model
-  AmendmentCreate%diam_collector = 0.d0
-  AmendmentCreate%diam_particle = 0.d0
-  AmendmentCreate%hamaker_constant = 0.d0
-  AmendmentCreate%density_particle = 0.d0
-  AmendmentCreate%alpha_efficiency = 1.d0
+  AmendmentCreate%detachment_model = UNINITIALIZED_INTEGER
+  AmendmentCreate%detachment_rate_constant = UNINITIALIZED_DOUBLE
 
-  !Attachment rates
-  AmendmentCreate%rate_attachment = -1.d0
-  AmendmentCreate%rate_detachment = 0.d0
-
-  !Attachment rates
   AmendmentCreate%debug_option = PETSC_FALSE
 
   nullify(AmendmentCreate%next)
@@ -171,14 +172,15 @@ subroutine AmendmentRead(this,input,option)
         call InputReadWord(input,option,this%name_immobile,PETSC_TRUE)
         call InputErrorMsg(input,option,keyword,error_string)
 
-      case('DECAY_AQUEOUS')
+      case('AQUEOUS_DECAY_MODEL')
         ! Decay rate while in the aqueous phase
         call InputReadCard(input,option,keyword,PETSC_TRUE)
-        call InputErrorMsg(input,option,'DECAY_AQUEOUS',error_string)
-        error_string2 = trim(error_string) // ',DECAY_AQUEOUS'
+        call InputErrorMsg(input,option,'AQUEOUS_DECAY_MODEL',error_string)
+        error_string2 = trim(error_string) // ',AQUEOUS_DECAY_MODEL'
         call StringToUpper(keyword)
         select case(keyword)
           case('CONSTANT')
+            this%aqueous_decay_model = MODEL_CONSTANT
             error_string3 = trim(error_string2) //',CONSTANT'
             call InputPushBlock(input,option)
             do
@@ -192,7 +194,7 @@ subroutine AmendmentRead(this,input,option)
               select case(keyword)
                 case('RATE')
                 ! Read the double precision rate constant
-                  call InputReadDouble(input,option,this%decay_aqueous)
+                  call InputReadDouble(input,option,this%aqueous_decay_rate)
                   call InputErrorMsg(input,option,keyword,error_string3)
                   ! Read the units
                   call InputReadWord(input,option,units,PETSC_TRUE)
@@ -204,7 +206,7 @@ subroutine AmendmentRead(this,input,option)
                   else
                     ! If units exist, convert to internal units of 1/s
                     internal_units = 'unitless/sec'
-                    this%decay_aqueous = this%decay_aqueous * &
+                    this%aqueous_decay_rate = this%aqueous_decay_rate * &
                       UnitsConvertToInternal(units,internal_units, &
                                   trim(error_string3)//',RATE UNITS', &
                                   option)
@@ -217,8 +219,9 @@ subroutine AmendmentRead(this,input,option)
             end do
             call InputPopBlock(input,option)
 
-          case('TEMPERATURE_MODEL')
-            error_string3 = trim(error_string2) // ',TEMPERATURE_MODEL'
+          case('TEMPERATURE')
+            this%aqueous_decay_model = MODEL_TEMPERATURE
+            error_string3 = trim(error_string2) // ',TEMPERATURE'
             call InputPushBlock(input,option)
             do
               call InputReadPflotranString(input,option)
@@ -232,19 +235,19 @@ subroutine AmendmentRead(this,input,option)
               select case(keyword)
                 case('TREF')
                 ! Reference temperature (Probably 4°C)
-                  call InputReadDouble(input,option,this%Tref_aqueous)
+                  call InputReadDouble(input,option,this%aqueous_Tref)
                   call InputErrorMsg(input,option,keyword,error_string3)
                 case('ZT')
                 ! Model parameter zT
-                  call InputReadDouble(input,option,this%zT_aqueous)
+                  call InputReadDouble(input,option,this%aqueous_zT)
                   call InputErrorMsg(input,option,keyword,error_string3)
                 case('N')
                   ! Model parameter n (Probably 1.0 or 2.0 )
-                  call InputReadDouble(input,option,this%nAq_aqueous)
+                  call InputReadDouble(input,option,this%aqueous_n)
                   call InputErrorMsg(input,option,keyword,error_string3)
                 case('LOGDREF')
                 ! D reference value (Probably 2.3)
-                  call InputReadDouble(input,option,this%logDref_aqueous)
+                  call InputReadDouble(input,option,this%aqueous_logDref)
                   call InputErrorMsg(input,option,keyword,error_string3)
                 case default
                   call InputKeywordUnrecognized(input,keyword,error_string3, &
@@ -257,14 +260,15 @@ subroutine AmendmentRead(this,input,option)
             call InputKeywordUnrecognized(input,keyword,error_string2,option)
         end select
 
-      case('DECAY_ADSORBED')
+      case('ADSORBED_DECAY_MODEL')
         ! Decay rate while in the immobile phase
         call InputReadCard(input,option,keyword,PETSC_TRUE)
-        call InputErrorMsg(input,option,'DECAY_ADSORBED',error_string)
-        error_string2 = trim(error_string) // ',DECAY_ADSORBED'
+        call InputErrorMsg(input,option,'ADSORBED_DECAY_MODEL',error_string)
+        error_string2 = trim(error_string) // ',ADSORBED_DECAY_MODEL'
         call StringToUpper(keyword)
         select case(keyword)
           case('CONSTANT')
+            this%adsorbed_decay_model = MODEL_CONSTANT
             error_string3 = trim(error_string2) // ',CONSTANT'
             call InputPushBlock(input,option)
             do
@@ -278,7 +282,7 @@ subroutine AmendmentRead(this,input,option)
               select case(keyword)
                 case('RATE')
                 ! Read the double precision rate constant
-                  call InputReadDouble(input,option,this%decay_adsorbed)
+                  call InputReadDouble(input,option,this%adsorbed_decay_rate)
                   call InputErrorMsg(input,option,keyword,error_string3)
                   ! Read the units
                   call InputReadWord(input,option,units,PETSC_TRUE)
@@ -290,7 +294,7 @@ subroutine AmendmentRead(this,input,option)
                   else
                     ! If units exist, convert to internal units of 1/s
                     internal_units = 'unitless/sec'
-                    this%decay_adsorbed = this%decay_adsorbed * &
+                    this%adsorbed_decay_rate = this%adsorbed_decay_rate * &
                       UnitsConvertToInternal(units,internal_units, &
                              trim(error_string3) // &
                              ',RATE CONSTANT UNITS',option)
@@ -302,8 +306,9 @@ subroutine AmendmentRead(this,input,option)
             end do
             call InputPopBlock(input,option)
 
-          case('TEMPERATURE_MODEL')
-            error_string3 = trim(error_string2) // ',TEMPERATURE_MODEL'
+          case('TEMPERATURE')
+            this%adsorbed_decay_model = MODEL_TEMPERATURE
+            error_string3 = trim(error_string2) // ',TEMPERATURE'
             call InputPushBlock(input,option)
             do
               call InputReadPflotranString(input,option)
@@ -315,16 +320,16 @@ subroutine AmendmentRead(this,input,option)
               call StringToUpper(keyword)
               select case(keyword)
                 case('TREF')
-                  call InputReadDouble(input,option,this%Tref_adsorbed)
+                  call InputReadDouble(input,option,this%adsorbed_Tref)
                   call InputErrorMsg(input,option,'TREF',error_string3)
                 case('ZT')
-                  call InputReadDouble(input,option,this%zT_adsorbed)
+                  call InputReadDouble(input,option,this%adsorbed_zT)
                   call InputErrorMsg(input,option,'ZT',error_string3)
                 case('N')
-                  call InputReadDouble(input,option,this%nAq_adsorbed)
+                  call InputReadDouble(input,option,this%adsorbed_n)
                   call InputErrorMsg(input,option,'N',error_string3)
                 case('LOGDREF')
-                  call InputReadDouble(input,option,this%logDref_adsorbed)
+                  call InputReadDouble(input,option,this%adsorbed_logDref)
                   call InputErrorMsg(input,option,'LOGDREF',error_string3)
                 case default
                   call InputKeywordUnrecognized(input,keyword,error_string3, &
@@ -336,16 +341,17 @@ subroutine AmendmentRead(this,input,option)
             call InputKeywordUnrecognized(input,keyword,error_string2,option)
         end select
 
-      case('RATE_ATTACHMENT')
+      case('ATTACHMENT_MODEL')
         ! Decay rate while in the aqueous phase
         call InputReadCard(input,option,keyword,PETSC_TRUE)
-        call InputErrorMsg(input,option,'RATE_ATTACHMENT', &
+        call InputErrorMsg(input,option,'ATTACHMENT_MODEL', &
                error_string)
-        error_string2 = trim(error_string) // ',RATE_ATTACHMENT'
+        error_string2 = trim(error_string) // ',ATTACHMENT_MODEL'
         call StringToUpper(keyword)
 
         select case(keyword)
           case('CONSTANT')
+            this%attachment_model = MODEL_CONSTANT
             error_string3 = trim(error_string2) // ',CONSTANT'
             call InputPushBlock(input,option)
             do
@@ -360,7 +366,7 @@ subroutine AmendmentRead(this,input,option)
               select case(keyword)
                 case('RATE')
                 ! Read the double precision rate constant
-                  call InputReadDouble(input,option,this%rate_attachment)
+                  call InputReadDouble(input,option,this%attachment_rate_constant)
                   call InputErrorMsg(input,option,'RATE',error_string3)
                   ! Read the units
                   call InputReadWord(input,option,units,PETSC_TRUE)
@@ -373,7 +379,7 @@ subroutine AmendmentRead(this,input,option)
                   else
                     ! If units exist, convert to internal units of 1/s
                     internal_units = 'unitless/sec'
-                    this%rate_attachment = this%rate_attachment * &
+                    this%attachment_rate_constant = this%attachment_rate_constant * &
                       UnitsConvertToInternal(units,internal_units, &
                                              trim(error_string3) // &
                                                ',RATE UNITS', &
@@ -386,7 +392,8 @@ subroutine AmendmentRead(this,input,option)
             end do
             call InputPopBlock(input,option)
 
-          case('FILTRATION_MODEL')
+          case('FILTRATION')
+            this%attachment_model = MODEL_FILTRATION
             call InputPushBlock(input,option)
             ! Gotta turn this on so Darcy velocity is stored in global
             ! and can be used in the reaction sandbox
@@ -397,19 +404,19 @@ subroutine AmendmentRead(this,input,option)
               if (InputCheckExit(input,option)) exit
 
               call InputReadCard(input,option,keyword)
-              call InputErrorMsg(input,option,'FILTRATION_MODEL', &
+              call InputErrorMsg(input,option,'FILTRATION', &
                      error_string)
-              error_string3 = trim(error_string2) // ',FILTRATION_MODEL'
+              error_string3 = trim(error_string2) // ',FILTRATION'
               call StringToUpper(keyword)
               select case(keyword)
-                case('DIAMETER_COLLECTOR')
+                case('COLLECTOR_DIAMETER')
                 ! Diameter of the collector, i.e., soil grain size [m]
-                  call InputReadDouble(input,option,this%diam_collector)
+                  call InputReadDouble(input,option,this%collector_diameter)
                   call InputErrorMsg(input,option,keyword,error_string3)
 
-                case('DIAMETER_PARTICLE')
+                case('PARTICLE_DIAMETER')
                 ! Diameter of the amendment [m]
-                  call InputReadDouble(input,option,this%diam_particle)
+                  call InputReadDouble(input,option,this%particle_diameter)
                   call InputErrorMsg(input,option,keyword,error_string3)
 
                 case('HAMAKER_CONSTANT')
@@ -417,14 +424,14 @@ subroutine AmendmentRead(this,input,option)
                   call InputReadDouble(input,option,this%hamaker_constant)
                   call InputErrorMsg(input,option,keyword,error_string3)
 
-                case('DENSITY_PARTICLE')
+                case('PARTICLE_DENSITY')
                 ! Density of the particulates [kg/m3]
-                  call InputReadDouble(input,option,this%density_particle)
+                  call InputReadDouble(input,option,this%particle_density)
                   call InputErrorMsg(input,option,keyword,error_string3)
 
-                case('ALPHA_EFFICIENCY')
+                case('ATTACHMENT_EFFICIENCY')
                 ! Collision/attachment efficiency [-]
-                  call InputReadDouble(input,option,this%alpha_efficiency)
+                  call InputReadDouble(input,option,this%attachment_efficiency)
                   call InputErrorMsg(input,option,keyword,error_string3)
 
                 case('DEBUG')
@@ -446,15 +453,16 @@ subroutine AmendmentRead(this,input,option)
         end select
 
       ! Detachment rate
-      case('RATE_DETACHMENT')
+      case('DETACHMENT_MODEL')
         ! Decay rate while in the aqueous phase
         call InputReadCard(input,option,keyword,PETSC_TRUE)
-        call InputErrorMsg(input,option,'RATE_DETACHMENT', &
+        call InputErrorMsg(input,option,'DETACHMENT_MODEL', &
                error_string)
-        error_string2 = trim(error_string) // ',RATE_DETACHMENT'
+        error_string2 = trim(error_string) // ',DETACHMENT_MODEL'
         call StringToUpper(keyword)
         select case(keyword)
           case('CONSTANT')
+            this%detachment_model = MODEL_CONSTANT
             error_string3 = trim(error_string2) // ',CONSTANT'
             call InputPushBlock(input,option)
             do
@@ -469,7 +477,7 @@ subroutine AmendmentRead(this,input,option)
               select case(keyword)
                 case('RATE')
                 ! Read the double precision rate constant
-                  call InputReadDouble(input,option,this%rate_detachment)
+                  call InputReadDouble(input,option,this%detachment_rate_constant)
                   call InputErrorMsg(input,option,'RATE',error_string3)
                   ! Read the units
                   call InputReadWord(input,option,units,PETSC_TRUE)
@@ -482,7 +490,7 @@ subroutine AmendmentRead(this,input,option)
                   else
                     ! If units exist, convert to internal units of 1/s
                     internal_units = 'unitless/sec'
-                    this%rate_detachment = this%rate_detachment * &
+                    this%detachment_rate_constant = this%detachment_rate_constant * &
                       UnitsConvertToInternal(units,internal_units, &
                                              error_string3,option)
                   endif
@@ -506,6 +514,7 @@ subroutine AmendmentRead(this,input,option)
 end subroutine AmendmentRead
 
 ! ************************************************************************** !
+
 subroutine AmendmentSetup(this,reaction,option)
   !
   ! Sets up the kinetic attachment/dettachment reactions
@@ -518,6 +527,7 @@ subroutine AmendmentSetup(this,reaction,option)
   use Reaction_Immobile_Aux_module
   use Option_module
   use Parameter_module
+  use Material_Aux_module, only : mean_soil_grain_size_index
 
   implicit none
 
@@ -533,9 +543,125 @@ subroutine AmendmentSetup(this,reaction,option)
 
   this%viscosity_id = ParameterGetIDFromName('Viscosity',option)
 
+  select case(this%attachment_model)
+    case(MODEL_CONSTANT)
+      if (Uninitialized(this%attachment_rate_constant)) then
+        option%io_buffer = 'RATE must be defined for ATTACHMENT_MODEL CONSTANT.'
+        call PrintErrMsg(option)
+      endif
+    case(MODEL_FILTRATION)
+      if (Uninitialized(this%particle_diameter)) then
+        option%io_buffer = 'ATTACHMENT_MODEL FILTRATION requires a PARTICLE_DIAMETER.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%hamaker_constant)) then
+        option%io_buffer = 'ATTACHMENT_MODEL FILTRATION requires a HAMAKER_CONSTANT.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%particle_density)) then
+        option%io_buffer = 'ATTACHMENT_MODEL FILTRATION requires a PARTICLE_DENSITY.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%attachment_efficiency)) then
+        option%io_buffer = 'ATTACHMENT_MODEL FILTRATION requires an ATTACHMENT_EFFICIENCY.'
+        call PrintErrMsg(option)
+      endif
+      if (mean_soil_grain_size_index == 0 .and. &
+          Uninitialized(this%collector_diameter)) then
+        option%io_buffer = 'FILTRATION_MODEL requires that COLLECTOR_DIAMETER be defined &
+          &or MEAN_SOIL_GRAIN_SIZE be specified under MATERIAL_PROPERTY.'
+        call PrintErrMsg(option)
+      endif
+      if (mean_soil_grain_size_index > 0 .and. &
+          Initialized(this%collector_diameter)) then
+        option%io_buffer = 'Both MEAN_SOIL_GRAIN_SIZE and COLLECTOR_DIAMETER cannot &
+          &be specified for Reaction Sandbox AMENDMENT.'
+        call PrintErrMsg(option)
+      endif
+    case default
+      if (Initialized(this%attachment_model)) then
+        option%io_buffer = 'A model must be specified for ATTACHMENT_MODEL.'
+        call PrintErrMsg(option)
+      endif
+  end select
+
+  select case(this%detachment_model)
+    case(MODEL_CONSTANT)
+      if (Uninitialized(this%detachment_rate_constant)) then
+        option%io_buffer = 'RATE must be defined for DETACHMENT_MODEL CONSTANT.'
+        call PrintErrMsg(option)
+      endif
+    case default
+      if (Initialized(this%detachment_model)) then
+        option%io_buffer = 'A model must be specified for DETACHMENT_MODEL.'
+        call PrintErrMsg(option)
+      endif
+  end select
+
+  select case(this%aqueous_decay_model)
+    case(MODEL_CONSTANT)
+      if (Uninitialized(this%aqueous_decay_rate)) then
+        option%io_buffer = 'RATE must be defined for AQUEOUS_DECAY_MODEL CONSTANT.'
+        call PrintErrMsg(option)
+      endif
+    case(MODEL_TEMPERATURE)
+      if (Uninitialized(this%aqueous_logDref)) then
+        option%io_buffer = 'AQUEOUS_DECAY_MODEL TEMPERATURE requires AQUEOUS_LOGDREF.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%aqueous_Tref)) then
+        option%io_buffer = 'AQUEOUS_DECAY_MODEL TEMPERATURE requires AQUEOUS_TREF.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%aqueous_zT)) then
+        option%io_buffer = 'AQUEOUS_DECAY_MODEL TEMPERATURE requires AQUEOUS_ZT.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%aqueous_N)) then
+        option%io_buffer = 'AQUEOUS_DECAY_MODEL TEMPERATURE requires AQUEOUS_N.'
+        call PrintErrMsg(option)
+      endif
+    case default
+      if (Initialized(this%aqueous_decay_model)) then
+        option%io_buffer = 'A model must be specified for AQUEOUS_DECAY_MODEL.'
+        call PrintErrMsg(option)
+      endif
+  end select
+
+  select case(this%adsorbed_decay_model)
+    case(MODEL_CONSTANT)
+      if (Uninitialized(this%adsorbed_decay_rate)) then
+        option%io_buffer = 'RATE must be defined for ADSORBED_DECAY_MODEL CONSTANT.'
+        call PrintErrMsg(option)
+      endif
+    case(MODEL_TEMPERATURE)
+      if (Uninitialized(this%adsorbed_logDref)) then
+        option%io_buffer = 'ADSORBED_DECAY_MODEL TEMPERATURE requires ADSORBED_LOGDREF.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%adsorbed_Tref)) then
+        option%io_buffer = 'ADSORBED_DECAY_MODEL TEMPERATURE requires ADSORBED_TREF.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%adsorbed_zT)) then
+        option%io_buffer = 'ADSORBED_DECAY_MODEL TEMPERATURE requires ADSORBED_ZT.'
+        call PrintErrMsg(option)
+      endif
+      if (Uninitialized(this%adsorbed_N)) then
+        option%io_buffer = 'ADSORBED_DECAY_MODEL TEMPERATURE requires ADSORBED_N.'
+        call PrintErrMsg(option)
+      endif
+    case default
+      if (Initialized(this%adsorbed_decay_model)) then
+        option%io_buffer = 'A model must be specified for ADSORBED_DECAY_MODEL.'
+        call PrintErrMsg(option)
+      endif
+  end select
+
 end subroutine AmendmentSetup
 
 ! ************************************************************************** !
+
 subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
                         rt_auxvar,global_auxvar,material_auxvar, &
                         reaction, option)
@@ -551,7 +677,8 @@ subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
   use String_module
   use Reaction_Aux_module, only : reaction_rt_type
   use Reaction_Immobile_Aux_module
-  use Material_Aux_module, only : material_auxvar_type
+  use Material_Aux_module, only : material_auxvar_type, &
+                                  mean_soil_grain_size_index
 
   implicit none
 
@@ -584,13 +711,8 @@ subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: RateDecayAq, RateDecayIm !Check units
   PetscReal :: stoichVaq
   PetscReal :: stoichVim
-
-  ! Decay model parameters
-  PetscReal :: decayAq, decayIm
-  PetscReal :: logDrefAq, logDrefAd
-  PetscReal :: TrefAq, TrefAd
-  PetscReal :: zTAq, zTAd
-  PetscReal :: nAq, nAd
+  PetscReal :: decayAq
+  PetscReal :: decayIm
 
   ! Filtration model parameters for attachment
   PetscReal :: katt
@@ -598,9 +720,12 @@ subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Gm, Gm5, Happel
   PetscReal :: NR, NPe, NvdW, Ngr
   PetscReal :: Eta_D, Eta_I, Eta_G, Eta_0
+  PetscReal :: zero
 
   ! Detachment rate
   PetscReal :: kdet
+
+  PetscInt :: idof_vaq, idof_vim
 
   ! Global stuff (Check global_aux.F90)
   volume = material_auxvar%volume
@@ -609,8 +734,11 @@ subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
   L_water = porosity*liquid_saturation*volume*1.d3
   ! 1.d3 converts m^3 water -> L water
 
-  viscosity = 0.0008891
-  ! Ns/m2 (This should be a field but not found in global_auxvar)
+  zero = 0.d0
+  viscosity = 0.0008891 !Pa-s
+  if (this%viscosity_id > 0) then
+    viscosity = global_auxvar%parameters(this%viscosity_id)
+  endif
 
   temperature = global_auxvar%temp
   rho_f = global_auxvar%den_kg(iphase)
@@ -633,11 +761,6 @@ subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
   stoichVaq = -1.d0
   stoichVim = 1.d0
 
-  ! kinetic rate constants
-  katt = 0.d0
-  kdet = 0.d0
-  kdet = this%rate_detachment
-
   !!!!!!!!!!!!!!!!!!!
   ! Decay rate - Aqueous phase
   !
@@ -646,160 +769,145 @@ subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
   !  logD = logDref - [(T-Tref)/zT]^n
   !
   !!!!!!!!!!!!!!!!!!!
-  logDrefAq = 0.0
-  TrefAq = 0.0
-  zTAq = 0.0
-  nAq = 0.0
-
-  IF (this%decay_aqueous < 0.d0) THEN
-    logDrefAq = this%logDref_aqueous
-    TrefAq = this%Tref_aqueous
-    zTAq = this%zT_aqueous
-    nAq = this%nAq_aqueous
-
-    decayAq = (2.302585/(10.0 ** (logDrefAq - (((temperature - TrefAq)/zTAq)**nAq))))/3600  ! 1/s
-  ELSE
-    decayAq = this%decay_aqueous
-  END IF
-
+  select case(this%aqueous_decay_model)
+    case(MODEL_CONSTANT)
+      decayAq = this%aqueous_decay_rate
+    case(MODEL_TEMPERATURE)
+      decayAq = (2.302585d0/(10.d0 ** (this%aqueous_logDref - &
+                                    (((temperature - this%aqueous_Tref)/ &
+                                      this%aqueous_zT)**this%aqueous_n))))/3600.d0  ! 1/s
+    case default
+      decayAq = 0.d0
+  end select
 
 !!!!!!!!!!!!!!!!!!!
 ! Decay rate - Immobile phase
 !!!!!!!!!!!!!!!!!!!
 
-  logDrefAd = 0.0
-  TrefAd = 0.0
-  zTAd = 0.0
-  nAd = 0.0
+  select case(this%adsorbed_decay_model)
+    case(MODEL_CONSTANT)
+      decayIm = this%adsorbed_decay_rate
+    case(MODEL_TEMPERATURE)
+      decayIm = (2.302585d0/(10.d0 ** (this%adsorbed_logDref - &
+                                    (((temperature - this%adsorbed_Tref)/ &
+                                      this%adsorbed_zT)**this%adsorbed_n))))/3600.d0  ! 1/s
+    case default
+      decayIm = 0.d0
+  end select
 
-  IF (this%decay_adsorbed < 0.d0) THEN
-    logDrefAd = this%logDref_adsorbed
-    TrefAd = this%Tref_adsorbed
-    zTAd = this%zT_adsorbed
-    nAd = this%nAq_adsorbed
-    decayIm = (2.302585/(10.0 ** (logDrefAd - (((temperature - TrefAd)/zTAd)**nAd))))/3600  ! 1/s
+  select case(this%attachment_model)
+    case(MODEL_CONSTANT)
+      katt = this%attachment_rate_constant
+    case(MODEL_FILTRATION)
+      ! Calculate attachment rate using filtration theory
+      ! See Tufenkji & Elimelech 2014 DOI : 10.1021/es034049r
+      ! and Saavedra et al. 2020 DOI : 10.1016/j.jconhyd.2020.103565
 
-  ELSE
-    decayIm = this%decay_adsorbed
-  END IF
+      kB = this%BOLTZMANN_CONSTANT
+      if (mean_soil_grain_size_index > 0) then
+        dc = material_auxvar%soil_properties(mean_soil_grain_size_index)
+      else
+        dc = this%collector_diameter
+      endif
+      dp = this%particle_diameter
+      rho_p = this%particle_density
+      alpha = this%attachment_efficiency
+      Hamaker = this%hamaker_constant
 
-!!!!!!!!!!!!!!!!!!!
-! Attachment rate
-!!!!!!!!!!!!!!!!!!!
-  dc = 0.0
-  dp = 0.0
-  Hamaker = 0.0
-  rho_p = 0.0
-  alpha = 0.0
+      qMag = MAX(global_auxvar%darcy_vel(iphase),1.0d-20)
 
-  IF (this%rate_attachment < 0.d0) THEN
-    kB = this%BOLTZMANN_CONSTANT
-    dc = this%diam_collector
-    dp = this%diam_particle
-    rho_p = this%density_particle
-    alpha = this%alpha_efficiency
-    Hamaker = this%hamaker_constant
+      diffusionCoeff = this%BOLTZMANN_CONSTANT*(temperature+T273K) / &
+                    (3.0 * PI * viscosity * dp)
 
-    qMag = MAX(global_auxvar%darcy_vel(iphase),1.0d-20)
+      ! Non-dimensional parameters
+      !! Happel parameter As
+      Gm = (1.0 - porosity)**(1./3.)
+      Gm5 = Gm*Gm*Gm*Gm*Gm
+      Happel = (2.0 * (1.0 - Gm5)) / (2.0 - (3.0*Gm) + (3.0*Gm5) - (2.0*Gm*Gm5))
 
-    diffusionCoeff = this%BOLTZMANN_CONSTANT*(temperature+T273K) / &
-                   (3.0 * PI * viscosity * dp)
+      !! Aspect ratio
+      NR = dp/dc
 
-    ! Non-dimensional parameters
-    !! Happel parameter As
-    Gm = (1.0 - porosity)**(1./3.)
-    Gm5 = Gm*Gm*Gm*Gm*Gm
-    Happel = (2.0 * (1.0 - Gm5)) / (2.0 - (3.0*Gm) + (3.0*Gm5) - (2.0*Gm*Gm5))
+      !! Péclet number
+      NPe = (qMag * dc) / (diffusionCoeff)
 
-    !! Aspect ratio
-    NR = dp/dc
+      !! van der Waals number
+      NvdW = Hamaker/(kB*(temperature + T273K))
 
-    !! Péclet number
-    NPe = (qMag * dc) / (diffusionCoeff)
+      !! Gravitational number
+      NGr = PI/12.0 * (dp*dp*dp*dp) * (rho_p - rho_f) * g /&
+            (kB*(temperature + T273K))
 
-    !! van der Waals number
-    NvdW = Hamaker/(kB*(temperature + T273K))
+      ! Collector efficiencies
+      ! ( see Tufenkji & Elimelech 2014
+      !   DOI : 10.1021/es034049r )
+      !! Transport by diffusion
+      Eta_D = 2.4 &
+              * Happel**(1./3.) &
+              * NR**(-0.081) &
+              * NPe**(-0.715) &
+              * NvdW**(0.052)
 
-    !! Gravitational number
-    NGr = PI/12.0 * (dp*dp*dp*dp) * (rho_p - rho_f) * g /&
-          (kB*(temperature + T273K))
+      !! Transport by interception
+      Eta_I = 0.55 &
+              * Happel &
+              * NR**(1.55) &
+              * NPe**(-0.125) &
+              * NvdW**(0.125)
 
-    ! Collector efficiencies
-    ! ( see Tufenkji & Elimelech 2014
-    !   DOI : 10.1021/es034049r )
-    !! Transport by diffusion
-    Eta_D = 2.4 &
-            * Happel**(1./3.) &
-            * NR**(-0.081) &
-            * NPe**(-0.715) &
-            * NvdW**(0.052)
+      !! Transport due to gravity
+      Eta_G = 0.475 &
+              * NR**(-1.35) &
+              * NPe**(-1.11) &
+              * NvdW**(0.053) &
+              * NGr**(1.11)
 
-    !! Transport by interception
-    Eta_I = 0.55 &
-            * Happel &
-            * NR**(1.55) &
-            * NPe**(-0.125) &
-            * NvdW**(0.125)
+      !! Single collector efficiency
+      Eta_0 = Eta_D + Eta_I + Eta_G
 
-    !! Transport due to gravity
-    Eta_G = 0.475 &
-            * NR**(-1.35) &
-            * NPe**(-1.11) &
-            * NvdW**(0.053) &
-            * NGr**(1.11)
+      ! Rate of attachment according to CFT
+      katt = 1.5 * (1 - porosity) * qMag * alpha * Eta_0 &
+            / (dc * porosity)
 
-    !! Single collector efficiency
-    Eta_0 = Eta_D + Eta_I + Eta_G
+      ! Edwin debugging
+      if(this%debug_option) then
+        print '(3x,"porosity = ", ES12.4)', porosity
+        print '(3x,"temp C   = ", ES12.4)', Temperature
+        print '(3x,"viscosit = ", ES12.4)', viscosity
+        print '(3x,"densityF = ", ES12.4)', rho_f
+        print '(3x,"densityP = ", ES12.4)', rho_p
 
-    ! Rate of attachment according to CFT
-    katt = 1.5 * (1 - porosity) * qMag * alpha * Eta_0 &
-           / (dc * porosity)
+        print '(3x,"DarcyqMa = ", ES12.4)', qMag
+        print '(3x,"diffCoef = ", ES12.4)', diffusionCoeff
+        print '(3x,"Gm       = ", ES12.4)', Gm
+        print '(3x,"Gm5      = ", ES12.4)', Gm5
+        print '(3x,"Happel   = ", ES12.4)', Happel
+        print '(3x,"NR       = ", ES12.4)', NR
+        print '(3x,"NPe      = ", ES12.4)', NPe
+        print '(3x,"NvW      = ", ES12.4)', NvdW
+        print '(3x,"NGr      = ", ES12.4)', NGr
+        print '(3x,"EtaD     = ", ES12.4)', Eta_D
+        print '(3x,"EtaI     = ", ES12.4)', Eta_I
+        print '(3x,"EtaG     = ", ES12.4)', Eta_G
+        print '(3x,"Eta0     = ", ES12.4)', Eta_0
+        print '(3x,"katt     = ", ES12.4)', katt
+        print *, "--------------------"
+      endif
+    case default
+      katt = 0.d0
+  end select
 
-    ! Edwin debugging
-    if(this%debug_option) then
-      print '(3x,"porosity = ", ES12.4)', porosity
-      print '(3x,"temp C   = ", ES12.4)', Temperature
-      print '(3x,"viscosit = ", ES12.4)', viscosity
-      print '(3x,"densityF = ", ES12.4)', rho_f
-      print '(3x,"densityP = ", ES12.4)', rho_p
-
-      print '(3x,"DarcyqMa = ", ES12.4)', qMag
-      print '(3x,"diffCoef = ", ES12.4)', diffusionCoeff
-      print '(3x,"Gm       = ", ES12.4)', Gm
-      print '(3x,"Gm5      = ", ES12.4)', Gm5
-      print '(3x,"Happel   = ", ES12.4)', Happel
-      print '(3x,"NR       = ", ES12.4)', NR
-      print '(3x,"NPe      = ", ES12.4)', NPe
-      print '(3x,"NvW      = ", ES12.4)', NvdW
-      print '(3x,"NGr      = ", ES12.4)', NGr
-      print '(3x,"EtaD     = ", ES12.4)', Eta_D
-      print '(3x,"EtaI     = ", ES12.4)', Eta_I
-      print '(3x,"EtaG     = ", ES12.4)', Eta_G
-      print '(3x,"Eta0     = ", ES12.4)', Eta_0
-      print '(3x,"katt     = ", ES12.4)', katt
-      print *, "--------------------"
-    endif
-
-  else
-    ! A constant rate of attachment
-    katt = this%rate_attachment
-  end if
-
-!!!!!!!!!!!!!!!!!!!
-! Detachment rate
-!!!!!!!!!!!!!!!!!!!
-  if (this%rate_detachment < 0.d0) then
-    kdet = 0.0
-  else
-    ! A constant rate of attachment
-    kdet = this%rate_detachment
-  end if
+  select case(this%detachment_model)
+    case(MODEL_CONSTANT)
+      kdet = this%detachment_rate_constant
+    case default
+      kdet = 0.d0
+  end select
 
   RateAtt = 0.0
   RateDet = 0.0
   RateDecayAq = 0.0
   RateDecayIm = 0.0
-
 
   ! Build here for attachment/detachment
   ! first-order forward - reverse (A <-> C)
@@ -843,22 +951,43 @@ subroutine AmendmentReact(this,Residual,Jacobian,compute_derivative, &
 
   ! The actual calculation:
 
-  Residual(this%species_Vaq_id) = &
-    Residual(this%species_Vaq_id) - RateAtt - RateDecayAq
+  idof_vaq = this%species_Vaq_id
+  idof_vim = this%species_Vim_id + reaction%offset_immobile
 
-  Residual(this%species_Vim_id + reaction%offset_immobile) = &
-    Residual(this%species_Vim_id + reaction%offset_immobile) &
-    - RateDet - RateDecayIm
+  Residual(idof_vaq) = Residual(idof_vaq) - RateAtt - RateDecayAq
+  Residual(idof_vim) = Residual(idof_vim) - RateDet - RateDecayIm
+
+  if (compute_derivative) then
+
+    ! Residual(idof_vaq) -= RateAtt + RateDecayAq
+    ! RateAtt  = -katt*Vaq*L_water + kdet*Vim*volume
+    ! RateDecayAq = -decayAq*Vaq*L_water
+    ! units = (mol/sec)*(kg water/mol) = kg water/sec
+    Jacobian(idof_vaq,idof_vaq) = Jacobian(idof_vaq,idof_vaq) - &
+      (-katt*L_water - decayAq*L_water) * &
+      rt_auxvar%aqueous%dtotal(this%species_Vaq_id, &
+                               this%species_Vaq_id,iphase)
+
+    ! units = (mol/sec)*(m^3 bulk/mol) = m^3 bulk/sec
+    Jacobian(idof_vaq,idof_vim) = Jacobian(idof_vaq,idof_vim) - &
+      kdet*volume
+
+    ! Residual(idof_vim) -= RateDet + RateDecayIm
+    ! RateDet     =  katt*Vaq*L_water - kdet*Vim*volume
+    ! RateDecayIm = -decayIm*Vim*volume
+    Jacobian(idof_vim,idof_vaq) = Jacobian(idof_vim,idof_vaq) - &
+      katt*L_water * &
+      rt_auxvar%aqueous%dtotal(this%species_Vaq_id, &
+                               this%species_Vaq_id,iphase)
+
+    Jacobian(idof_vim,idof_vim) = Jacobian(idof_vim,idof_vim) - &
+      (-kdet*volume - decayIm*volume)
+
+  endif
 
   ! NOTES
   ! 1. Always subtract contribution from residual
   ! 2. Units of residual are moles/second
-  ! Residual(this%species_Vaq_id) = &
-  !   Residual(this%species_Vaq_id) - RateAtt - RateDecayAq
-
-  ! Residual(this%species_Vim_id + reaction%offset_immobile) = &
-  !   Residual(this%species_Vim_id + reaction%offset_immobile) &
-  !   - RateDet - RateDecayIm
 
 end subroutine AmendmentReact
 
