@@ -1409,8 +1409,14 @@ subroutine THCMapBCAuxVarsToGlobal(realization)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
+      global_auxvars_bc(sum_connection)%den_kg = &
+        thc_auxvars_bc(sum_connection)%den_kg
       global_auxvars_bc(sum_connection)%sat = &
         thc_auxvars_bc(sum_connection)%sat
+      global_auxvars_bc(sum_connection)%temp = &
+        thc_auxvars_bc(sum_connection)%temp
+      global_auxvars_bc(sum_connection)%pres(1) = &
+        thc_auxvars_bc(sum_connection)%pres
     enddo
     boundary_condition => boundary_condition%next
   enddo
