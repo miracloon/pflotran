@@ -1,0 +1,65 @@
+-- PRESSURE: Liquid Pressure --
+      Max:   2.5401872379948E+05
+      Min:   1.0626471672552E+05
+     Mean:   1.6190841915179E+05
+        2:   2.2304616746947E+05
+        5:   1.5541206548800E+05
+        8:   1.2302721381021E+05
+-- GENERIC: Liquid Viscosity --
+      Max:   2.6760260364196E-03
+      Min:   6.9146953258415E-04
+     Mean:   1.3619219902367E-03
+        2:   2.3547176265677E-03
+        5:   1.1744110975258E-03
+        8:   6.9146953258415E-04
+-- GENERIC: Solute Concentration --
+      Max:   9.3307139798963E+02
+      Min:   4.6171650256024E+01
+     Mean:   3.8846604640906E+02
+        2:   8.0493581002649E+02
+        5:   3.5713063637716E+02
+        8:   1.1199630998534E+02
+-- CONCENTRATION: Total Particle_aq --
+      Max:   6.3388585436335E-02
+      Min:   3.0750436158181E-03
+     Mean:   2.6326762409201E-02
+        2:   5.4699516078779E-02
+        5:   2.4169033242924E-02
+        8:   7.4973109418704E-03
+-- CONCENTRATION: Total Br- --
+      Max:   6.7972428520470E-03
+      Min:   3.4391288401742E-04
+     Mean:   2.8479346010990E-03
+        2:   5.8818280932820E-03
+        5:   2.6299420894753E-03
+        8:   8.3048842274276E-04
+-- CONCENTRATION: Particle_im --
+      Max:   1.5742190352137E-01
+      Min:   9.9998476040170E-03
+     Mean:   8.1696456123732E-02
+        2:   1.4838133877249E-01
+        5:   8.9620034056067E-02
+        8:   3.0544945025905E-02
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:   1.0000000000000E+00
+        2:         1
+        5:         1
+        8:         1
+-- SOLUTION: Flow --
+   Time (seconds):   3.5257839999758E-03
+   Time Steps:            4
+   Newton Iterations:           22
+   Linear Solver Iterations:           22
+   Time Step Cuts:            0
+   Solution 2-Norm:   5.3275036265691E+05
+   Residual 2-Norm:   7.1597397814337E-10
+-- SOLUTION: Transport --
+   Time (seconds):   1.1695250000230E-03
+   Time Steps:            4
+   Newton Iterations:            4
+   Linear Solver Iterations:            4
+   Time Step Cuts:            0
+   Solution 2-Norm:   3.2457800884637E-01
+   Residual 2-Norm:   2.9703067839942E-18
