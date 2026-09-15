@@ -22,7 +22,9 @@ module THC_Common_module
             THCAccumDerivative, &
             THCFluxDerivative, &
             THCBCFluxDerivative, &
-            THCSrcSinkDerivative
+            THCSrcSinkDerivative, &
+            THCReact, &
+            THCReactDerivative
 
 contains
 
@@ -1722,6 +1724,90 @@ subroutine THCSrcSinkDerivative(option,flow_aux_real_var, &
   endif
 
 end subroutine THCSrcSinkDerivative
+
+! ************************************************************************** !
+
+subroutine THCReact(thc_auxvar,global_auxvar,material_auxvar, &
+                    option,Res,Jac,calculate_derivatives)
+  !
+  ! Computes a first-order solute decay loss term for the solute mass
+  ! balance (ported from compositional_flow's CompFlowReact).
+  !
+  ! Author: Glenn Hammond
+  ! Date: 06/04/26
+  !
+  use Option_module
+  use Material_Aux_module
+
+  implicit none
+
+  type(thc_auxvar_type) :: thc_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
+  type(option_type) :: option
+  PetscReal :: Res(THC_NDOF)
+  PetscReal :: Jac(THC_NDOF,THC_NDOF)
+  PetscBool :: calculate_derivatives
+
+  PetscReal :: tempreal
+  PetscReal, parameter :: L_per_m3 = 1.d3
+
+  Res = 0.d0
+  Jac = 0.d0
+
+  ! L/sec
+  tempreal = material_auxvar%volume * thc_auxvar%effective_porosity * &
+             thc_auxvar%sat * L_per_m3 * thc_decay_rate_constant
+
+  ! mol/sec
+  Res(thc_concentration_dof) = tempreal * thc_auxvar%conc
+
+  if (calculate_derivatives) then
+    Jac(thc_concentration_dof,thc_concentration_dof) = tempreal
+  endif
+
+end subroutine THCReact
+
+! ************************************************************************** !
+
+subroutine THCReactDerivative(thc_auxvar,global_auxvar,material_auxvar, &
+                              option,Res,Jac)
+  !
+  ! Computes derivatives of the solute decay term for the Jacobian.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 06/25/26
+  !
+  use Option_module
+  use Material_Aux_module
+
+  implicit none
+
+  type(thc_auxvar_type) :: thc_auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
+  type(option_type) :: option
+  PetscReal :: Res(THC_NDOF)
+  PetscReal :: Jac(THC_NDOF,THC_NDOF)
+
+  PetscReal :: res_pert(THC_NDOF)
+  PetscReal :: Jdum(THC_NDOF,THC_NDOF)
+  PetscInt :: idof, ieq
+
+  call THCReact(thc_auxvar(ZERO_INTEGER),global_auxvar,material_auxvar, &
+                option,Res,Jac,.not.thc_numerical_derivatives)
+
+  if (thc_numerical_derivatives) then
+    do idof = 1, option%nflowdof
+      call THCReact(thc_auxvar(idof),global_auxvar,material_auxvar, &
+                    option,res_pert,Jdum,PETSC_FALSE)
+      do ieq = 1, option%nflowdof
+        Jac(ieq,idof) = (res_pert(ieq)-Res(ieq))/thc_auxvar(idof)%pert
+      enddo
+    enddo
+  endif
+
+end subroutine THCReactDerivative
 
 ! ************************************************************************** !
 

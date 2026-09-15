@@ -1222,6 +1222,21 @@ subroutine THCResidual(snes,xx,r,A,realization,debug,ierr)
     source_sink => source_sink%next
   enddo
 
+  ! Solute decay reaction term -----------------------------
+  if (thc_decay_rate_constant > 0.d0) then
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      imat = patch%imat(ghosted_id)
+      if (imat <= 0) cycle
+      call THCReactDerivative(thc_auxvars(:,ghosted_id), &
+                              global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
+                              option,Res,Jup)
+      call PetUtilVecSVBL(r_p,local_id,Res,ndof,PETSC_FALSE)
+      call PetUtilMatSVBL(A,ghosted_id,ghosted_id,Jup,ndof)
+    enddo
+  endif
+
   call VecRestoreArray(r,r_p,ierr);CHKERRQ(ierr)
 
   call MatrixZeroingZeroVecEntries(patch%aux%THC%matrix_zeroing,r)

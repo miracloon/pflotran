@@ -263,6 +263,12 @@ subroutine PMTHCReadSimOptionsBlock(this,input)
         option%flow%store_darcy_vel = PETSC_TRUE
         option%flow%store_state_variables_in_global = PETSC_TRUE
         thc_shear_thinning = PETSC_TRUE
+      case('SOLUTE_DECAY_RATE_CONSTANT')
+        call InputReadDouble(input,option,thc_decay_rate_constant)
+        call InputErrorMsg(input,option,keyword,error_string)
+        call InputReadAndConvertUnits(input,thc_decay_rate_constant, &
+                                      '1/sec',trim(error_string)//','// &
+                                      keyword,option)
       case default
         call InputKeywordUnrecognized(input,keyword,'THC Mode',option)
     end select

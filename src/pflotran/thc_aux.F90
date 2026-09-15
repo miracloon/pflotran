@@ -66,6 +66,8 @@ module THC_Aux_module
   ! non-Newtonian Cross-model shear-thinning viscosity (replaces the brine
   ! T,C viscosity when enabled; requires option%flow%store_darcy_vel)
   PetscBool, public :: thc_shear_thinning = PETSC_FALSE
+  ! first-order solute decay rate constant [1/sec]; disabled when <= 0
+  PetscReal, public :: thc_decay_rate_constant = 0.d0
 
   ! debugging
   PetscInt, public :: thc_ni_count
