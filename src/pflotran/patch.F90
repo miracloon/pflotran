@@ -1064,6 +1064,16 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                     temp_int = temp_int + 1
                     iflag = PETSC_TRUE
                 end select
+                ! h_conv occupies the water-aux for TEMPERATURE
+                ! CONVECTIVE (cannot combine with water CONDUCTANCE)
+                if (.not.iflag .and. &
+                    associated(coupler%flow_condition%temperature)) then
+                  if (coupler%flow_condition%temperature%itype == &
+                      CONVECTIVE_BC) then
+                    temp_int = temp_int + 1
+                    iflag = PETSC_TRUE
+                  endif
+                endif
                 allocate(coupler%flow_bc_type(ndof+temp_int))
                 allocate(coupler%flow_aux_real_var(ndof+temp_int, &
                                                    num_connections))

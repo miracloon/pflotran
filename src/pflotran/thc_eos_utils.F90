@@ -38,9 +38,9 @@ module THC_EOS_Utils_module
   private
 
   ! --- module parameters --------------------------------------------------
-  ! Effective molar mass of the dissolved solids [kg/mol] (NaCl-equivalent;
-  ! FMWNACL = 58.44277 kg/kmol).
-  PetscReal, parameter, public :: thc_molar_mass_solute = 0.05844d0
+  ! Effective molar mass of the dissolved solids [kg/mol]; NaCl default,
+  ! overridden by the SOLUTE_MOLAR_MASS process-model option.
+  PetscReal, public :: thc_molar_mass_solute = 0.05844d0
   ! Reference liquid density [kg/m^3] used to convert C [mol/L] to the salinity
   ! mass fraction the Ext EOS routines require. The dependence is weak for the
   ! dilute-to-moderate TDS range; callers needing tight consistency may iterate
@@ -120,7 +120,7 @@ subroutine THCDensityAndDerivs(T, P, C, den_kg, den_kmol, &
 
   PetscReal :: aux1(1)
   PetscReal :: dw, dwmol, dwp, dwt
-  PetscReal :: dw_pert, dwmol_pert, dwp_pert, dwt_pert
+  PetscReal :: dw_pert, dwmol_pert
   PetscReal :: s, ds_dC, dden_ds
 
   if (.not.EOSWaterDensityIsBrine()) then
@@ -139,7 +139,7 @@ subroutine THCDensityAndDerivs(T, P, C, den_kg, den_kmol, &
   call THCConcToMassFraction(C, thc_density_reference, &
                                  thc_molar_mass_solute, s, ds_dC)
   aux1(1) = s
-  call EOSWaterDensityExt(T, P, aux1, dw, dwmol, dwp, dwt, ierr)
+  call EOSWaterDensityExt(T, P, aux1, dw, dwmol, ierr)
   call THCConcToMassFraction(C, dw, thc_molar_mass_solute, s, ds_dC)
   aux1(1) = s
 
@@ -155,8 +155,7 @@ subroutine THCDensityAndDerivs(T, P, C, den_kg, den_kmol, &
 
   ! d(rho)/dC by chain rule, d(rho)/ds via one-sided finite difference.
   aux1(1) = s + thc_salinity_perturbation
-  call EOSWaterDensityExt(T, P, aux1, dw_pert, dwmol_pert, dwp_pert, &
-                          dwt_pert, ierr)
+  call EOSWaterDensityExt(T, P, aux1, dw_pert, dwmol_pert, ierr)
   dden_ds = (dw_pert - dw) / thc_salinity_perturbation
   dden_dC = dden_ds * ds_dC
 
@@ -173,8 +172,8 @@ subroutine THCViscosityAndDerivs(T, P, C, den_kg, vis, dvis_dT, dvis_dC, &
   ! Batzle & Wang Eq 32 does not actually use them, but they
   ! are computed here for correctness / pointer-agnosticism.
   !
-  ! Pressure dependence is omitted by design (dVW_dP == 0), so no dvis_dP is
-  ! returned. d(mu)/dC is formed locally:
+  ! Viscosity pressure dependence is neglected in the Jacobian (as in TH),
+  ! so no dvis_dP is returned. d(mu)/dC is formed locally:
   !   d(mu)/dC = d(mu)/ds . ds/dC, d(mu)/ds via one-sided finite difference.
   !
   ! Author: Piyoosh Jaysaval
@@ -194,7 +193,7 @@ subroutine THCViscosityAndDerivs(T, P, C, den_kg, vis, dvis_dT, dvis_dC, &
   PetscReal :: aux1(1)
   PetscReal :: PS, dPS_dT
   PetscReal :: VW, dVW_dT, dVW_dP
-  PetscReal :: VW_pert, dVW_dT_pert, dVW_dP_pert
+  PetscReal :: VW_pert
   PetscReal :: s, ds_dC, dvis_ds
 
   ! Saturation pressure (interface input; unused by Batzle & Wang Eq 32).
@@ -213,7 +212,7 @@ subroutine THCViscosityAndDerivs(T, P, C, den_kg, vis, dvis_dT, dvis_dC, &
   call THCConcToMassFraction(C, den_kg, thc_molar_mass_solute, s, ds_dC)
   aux1(1) = s
 
-  ! Viscosity with analytic T derivative (dVW_dP is hard-set to 0 by the EOS).
+  ! Viscosity with analytic T derivative; dVW_dP is discarded (as in TH).
   call EOSWaterViscosityExt(T, P, PS, dPS_dT, aux1, VW, dVW_dT, dVW_dP, &
                             ierr)
   vis     = VW
@@ -221,8 +220,7 @@ subroutine THCViscosityAndDerivs(T, P, C, den_kg, vis, dvis_dT, dvis_dC, &
 
   ! d(mu)/dC by chain rule, d(mu)/ds via one-sided finite difference.
   aux1(1) = s + thc_salinity_perturbation
-  call EOSWaterViscosityExt(T, P, PS, dPS_dT, aux1, VW_pert, dVW_dT_pert, &
-                            dVW_dP_pert, ierr)
+  call EOSWaterViscosityExt(T, P, PS, aux1, VW_pert, ierr)
   dvis_ds = (VW_pert - VW) / thc_salinity_perturbation
   dvis_dC = dvis_ds * ds_dC
 

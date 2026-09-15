@@ -104,6 +104,7 @@ subroutine GlobalAuxVarInit(auxvar,option)
   type(option_type) :: option
 
   PetscInt :: nphase
+  PetscInt :: nspec
 
   auxvar%istate = 0
   auxvar%temp = 0.d0
@@ -247,9 +248,12 @@ subroutine GlobalAuxVarInit(auxvar,option)
   endif
 
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
-    allocate(auxvar%mass_balance(option%nflowspec,nphase))
+    nspec = option%nflowspec
+    ! THC tracks water and solute in the flow mass balance
+    if (option%iflowmode == THC_MODE) nspec = TWO_INTEGER
+    allocate(auxvar%mass_balance(nspec,nphase))
     auxvar%mass_balance = 0.d0
-    allocate(auxvar%mass_balance_delta(option%nflowspec,nphase))
+    allocate(auxvar%mass_balance_delta(nspec,nphase))
     auxvar%mass_balance_delta = 0.d0
   endif
 

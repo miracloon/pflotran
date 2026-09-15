@@ -140,6 +140,7 @@ subroutine PMTHCReadSimOptionsBlock(this,input)
   !
   use THC_module
   use THC_Aux_module
+  use THC_EOS_Utils_module, only : thc_molar_mass_solute
   use Input_Aux_module
   use String_module
   use Option_module
@@ -186,6 +187,12 @@ subroutine PMTHCReadSimOptionsBlock(this,input)
         thc_calc_bcflux = PETSC_FALSE
       case('TENSORIAL_RELATIVE_PERMEABILITY')
         thc_tensorial_rel_perm = PETSC_TRUE
+      case('SOLUTE_MOLAR_MASS')
+        call InputReadDouble(input,option,thc_molar_mass_solute)
+        call InputErrorMsg(input,option,keyword,error_string)
+        call InputReadAndConvertUnits(input,thc_molar_mass_solute, &
+                                      'kg/mol',trim(error_string)//','// &
+                                      keyword,option)
       case('SOLID_DENSITY','SOLID_GRAIN_DENSITY','ROCK_DENSITY')
         call InputReadDouble(input,option,thc_density_solid)
         call InputErrorMsg(input,option,keyword,error_string)

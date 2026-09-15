@@ -1,0 +1,205 @@
+#Description: 1D vertical hot-brine column at reservoir conditions
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE THC
+      OPTIONS
+        LIQUID_HEAT_CAPACITY 4184.d0 J/kg-C
+        SOLID_HEAT_CAPACITY 900.d0 J/kg-C
+        SOLID_DENSITY 2700.d0 kg/m^3
+        SOLUTE_MOLAR_MASS 0.0745513d0 kg/mol
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== equations of state ===============================
+EOS WATER
+  DENSITY DRIESNER
+  VISCOSITY BATZLE_AND_WANG
+END
+
+#=========================== numerical methods ================================
+NUMERICAL_METHODS FLOW
+  NEWTON_SOLVER
+    MAX_ALLOW_LIQ_PRES_CHANGE_NI 1.d0
+  /
+  LINEAR_SOLVER
+    SOLVER DIRECT
+  /
+END
+
+#=========================== regression =======================================
+REGRESSION
+  CELL_IDS
+    1
+    5
+    10
+    15
+    20
+  /
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 1 1 20
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 100.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+  DIFFUSION_ACTIVATION_ENERGY 15000.d0
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY rock
+  ID 1
+  POROSITY 0.1d0
+  TORTUOSITY 0.5d0
+  ROCK_DENSITY 2700.d0
+  SPECIFIC_HEAT 900.d0
+  THERMAL_CHARACTERISTIC_CURVES cct
+  PERMEABILITY
+    PERM_ISO 1.d-14
+  /
+  CHARACTERISTIC_CURVES cc1
+END
+
+#=========================== thermal characteristic curves ====================
+# LINEAR_RESISTIVITY-style kappa(T) matters over a 100 C contrast; POWER form
+THERMAL_CHARACTERISTIC_CURVES cct
+  THERMAL_CONDUCTIVITY_FUNCTION POWER
+    THERMAL_CONDUCTIVITY_DRY 3.d0 W/m-C
+    THERMAL_CONDUCTIVITY_WET 3.d0 W/m-C
+    EXPONENT -0.5d0
+  /
+/
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIMES y 1.0 5.0
+  FORMAT TECPLOT POINT
+  VARIABLES
+    LIQUID_PRESSURE
+    TEMPERATURE
+    SOLUTE_CONCENTRATION
+    LIQUID_DENSITY
+    LIQUID_VISCOSITY
+    THERMAL_CONDUCTIVITY
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 10.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 d
+  MAXIMUM_TIMESTEP_SIZE 0.5d0 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 100.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 100.d0
+    1.d0 1.d0 100.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 0.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  DATUM 0.d0 0.d0 100.d0
+  LIQUID_PRESSURE 2.d7
+  TEMPERATURE 150.d0
+  CONCENTRATION 0.5d0
+END
+
+FLOW_CONDITION top
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  DATUM 0.d0 0.d0 100.d0
+  LIQUID_PRESSURE 2.d7
+  TEMPERATURE 150.d0
+  CONCENTRATION 0.5d0
+END
+
+# hot, salty base
+FLOW_CONDITION bottom
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+    TEMPERATURE DIRICHLET
+    CONCENTRATION DIRICHLET
+  /
+  DATUM 0.d0 0.d0 100.d0
+  LIQUID_PRESSURE 2.d7
+  TEMPERATURE 250.d0
+  CONCENTRATION 1.d0
+END
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION top
+  FLOW_CONDITION top
+  REGION top
+END
+
+BOUNDARY_CONDITION bottom
+  FLOW_CONDITION bottom
+  REGION bottom
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL rock
+END
+
+END_SUBSURFACE

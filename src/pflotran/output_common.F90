@@ -2041,6 +2041,10 @@ subroutine OutputCommonMapFlowFormulaWeight(option,flow_dof_scale)
       flow_dof_scale(1) = richards_density_kmol_to_kg
     case(TH_MODE,TH_TS_MODE)
       flow_dof_scale(1) = FMWH2O
+    case(THC_MODE)
+      ! residuals: water kmol/s, energy MJ/s (option%scale applied in the
+      ! kernels), solute mol/s
+      flow_dof_scale(1) = FMWH2O
     case(G_MODE,H_MODE)
       ! mass residuals are kmol/s; energy residual is MJ/s
       flow_dof_scale(1) = FMWH2O
@@ -2097,7 +2101,7 @@ subroutine OutputCommonGlobalMassHeader(realization_base,fid,icol, &
 
   select case(option%iflowmode)
     case(NULL_MODE,RICHARDS_MODE,RICHARDS_TS_MODE,PNF_MODE,ZFLOW_MODE, &
-         TH_MODE,TH_TS_MODE,H_MODE,G_MODE,WF_MODE,IMMISCIBLE_MODE, &
+         TH_MODE,TH_TS_MODE,THC_MODE,H_MODE,G_MODE,WF_MODE,IMMISCIBLE_MODE, &
          MPH_MODE,SCO2_MODE)
     case default
       option%io_buffer = 'Global mass headers must be added for flow mode "' &
@@ -2126,6 +2130,12 @@ subroutine OutputCommonGlobalMassHeader(realization_base,fid,icol, &
     case(TH_MODE,TH_TS_MODE)
       call OutputWriteToHeader(fid,'Global Water Mass in Liquid Phase', &
                                'kg','',icol)
+    case(THC_MODE)
+      ! DOF order: water, energy, solute
+      call OutputWriteToHeader(fid,'Global Water Mass in Liquid Phase', &
+                               'kg','',icol)
+      call OutputWriteToHeader(fid,'Global Energy','MJ','',icol)
+      call OutputWriteToHeader(fid,'Global Solute','mol','',icol)
     case(H_MODE)
       call OutputWriteToHeader(fid,'Global Water Mass in Liquid Phase', &
                                'kg','',icol)
@@ -2314,7 +2324,7 @@ subroutine OutputCommonFluxHeader(realization_base,name,fid,icol, &
 
   select case(option%iflowmode)
     case(NULL_MODE,RICHARDS_MODE,RICHARDS_TS_MODE,PNF_MODE,ZFLOW_MODE, &
-         TH_MODE,TH_TS_MODE,H_MODE,G_MODE,WF_MODE,IMMISCIBLE_MODE, &
+         TH_MODE,TH_TS_MODE,THC_MODE,H_MODE,G_MODE,WF_MODE,IMMISCIBLE_MODE, &
          MPH_MODE,SCO2_MODE)
     case default
       option%io_buffer = 'Flux headers must be added for flow mode "' // &
@@ -2340,6 +2350,20 @@ subroutine OutputCommonFluxHeader(realization_base,name,fid,icol, &
       string = trim(name) // ' Water Mass'
       call OutputWriteToHeader(fid,string,'kg','',icol)
       units = 'kg/' // trim(output_option%tunit) // ''
+      call OutputWriteToHeader(fid,string,units,'',icol)
+    case(THC_MODE)
+      ! DOF order: water, energy, solute
+      string = trim(name) // ' Water Mass'
+      call OutputWriteToHeader(fid,string,'kg','',icol)
+      units = 'kg/' // trim(output_option%tunit) // ''
+      call OutputWriteToHeader(fid,string,units,'',icol)
+      string = trim(name) // ' Energy'
+      call OutputWriteToHeader(fid,string,'MJ','',icol)
+      units = 'MJ/' // trim(output_option%tunit) // ''
+      call OutputWriteToHeader(fid,string,units,'',icol)
+      string = trim(name) // ' Solute'
+      call OutputWriteToHeader(fid,string,'mol','',icol)
+      units = 'mol/' // trim(output_option%tunit) // ''
       call OutputWriteToHeader(fid,string,units,'',icol)
     case(H_MODE)
       units = 'kg/' // trim(output_option%tunit) // ''

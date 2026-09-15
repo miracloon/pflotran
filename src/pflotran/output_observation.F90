@@ -2327,6 +2327,7 @@ subroutine OutputMassBalance(realization_base)
   use Richards_module, only : RichardsComputeMassBalance
   use Mphase_module, only : MphaseComputeMassBalance
   use TH_module, only : THComputeMassBalance
+  use THC_module, only : THCComputeConservation
   use Reactive_Transport_module, only : RTComputeMassBalance
   use NW_Transport_module, only : NWTComputeMassBalance
   use General_module, only : GeneralComputeMassBalance
@@ -2380,6 +2381,8 @@ subroutine OutputMassBalance(realization_base)
                realization_base%option%nphase)
   PetscReal :: sum_kg_global(realization_base%option%nflowspec, &
                realization_base%option%nphase)
+  PetscReal :: sum_thc(2), sum_thc_global(2)
+  PetscReal :: sum_thc2(2), sum_thc2_global(2)
   PetscReal, allocatable :: sum_mol(:,:), sum_mol_delta(:,:), &
                             sum_mol_global(:,:)
   PetscReal, allocatable :: global_total_mass(:,:), total_mass(:,:)
@@ -2448,6 +2451,10 @@ subroutine OutputMassBalance(realization_base)
         case(TH_MODE,TH_TS_MODE)
           call OutputWriteToHeader(fid,'Global Water Mass in Liquid Phase', &
                                     'kg','',icol)
+        case(THC_MODE)
+          call OutputWriteToHeader(fid,'Global Water Mass in Liquid Phase', &
+                                    'kg','',icol)
+          call OutputWriteToHeader(fid,'Global Solute','mol','',icol)
         case(H_MODE)
           call OutputWriteToHeader(fid,'Global Water Mass in Liquid Phase', &
                                     'kg','',icol)
@@ -2616,6 +2623,17 @@ subroutine OutputMassBalance(realization_base)
             call OutputWriteToHeader(fid,string,'kg','',icol)
             units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+          case(THC_MODE)
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+            string = trim(coupler%name) // ' Solute'
+            call OutputWriteToHeader(fid,string,'mol','',icol)
+            units = 'mol/' // trim(output_option%tunit) // ''
+            string = trim(coupler%name) // ' Solute'
             call OutputWriteToHeader(fid,string,units,'',icol)
           case(H_MODE)
             string = trim(coupler%name) // ' Water Mass'
@@ -2987,6 +3005,14 @@ subroutine OutputMassBalance(realization_base)
           case(TH_MODE,TH_TS_MODE)
             call THComputeMassBalance(realization_base,sum_kg(1,1), &
                                       dummy_energy)
+          case(THC_MODE)
+            call THCComputeConservation(realization_base,sum_thc(1), &
+                                        dummy_energy,sum_thc(2))
+            int_mpi = TWO_INTEGER
+            call MPI_Reduce(sum_thc,sum_thc_global,int_mpi, &
+                            MPI_DOUBLE_PRECISION,MPI_SUM, &
+                            option%comm%io_rank,option%mycomm, &
+                            ierr);CHKERRQ(ierr)
           case(MPH_MODE)
             call MphaseComputeMassBalance(realization_base,sum_kg(:,:), &
                                           sum_trapped(:))
@@ -3030,6 +3056,9 @@ subroutine OutputMassBalance(realization_base)
               call WriteRealNoAdv(fid,sum_kg_global(ispec,iphase))
             enddo
           enddo
+        case(THC_MODE)
+          call WriteRealNoAdv(fid,sum_thc_global(1))
+          call WriteRealNoAdv(fid,sum_thc_global(2))
         case(G_MODE)
           do iphase = 1, option%nphase
             do ispec = 1, option%nflowspec
@@ -3331,6 +3360,35 @@ subroutine OutputMassBalance(realization_base)
           if (OptionIsIORank(option)) then
             ! change sign for positive in / negative out
             call WriteRealNoAdv(fid,-sum_kg_global(1,1)*output_option%tconv)
+          endif
+
+        case(THC_MODE)
+          ! cumulative: water already kg, solute mol (THCUpdateMassBalance)
+          sum_thc = 0.d0
+          sum_thc2 = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_thc = sum_thc + &
+              global_auxvars_bc_or_ss(offset+iconn)%mass_balance(1:2,1)
+            sum_thc2 = sum_thc2 + &
+              global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(1:2,1)
+          enddo
+          ! rates: water delta kmol -> kg, solute delta already mol
+          sum_thc2(1) = sum_thc2(1)*FMWH2O
+
+          int_mpi = TWO_INTEGER
+          call MPI_Reduce(sum_thc,sum_thc_global,int_mpi, &
+                          MPI_DOUBLE_PRECISION,MPI_SUM,option%comm%io_rank, &
+                          option%mycomm,ierr);CHKERRQ(ierr)
+          call MPI_Reduce(sum_thc2,sum_thc2_global,int_mpi, &
+                          MPI_DOUBLE_PRECISION,MPI_SUM,option%comm%io_rank, &
+                          option%mycomm,ierr);CHKERRQ(ierr)
+
+          if (OptionIsIORank(option)) then
+            ! change sign for positive in / negative out
+            call WriteRealNoAdv(fid,-sum_thc_global(1))
+            call WriteRealNoAdv(fid,-sum_thc2_global(1)*output_option%tconv)
+            call WriteRealNoAdv(fid,-sum_thc_global(2))
+            call WriteRealNoAdv(fid,-sum_thc2_global(2)*output_option%tconv)
           endif
 
         case(MPH_MODE)

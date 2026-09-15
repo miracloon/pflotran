@@ -151,6 +151,7 @@ subroutine OutputConservation(realization_base)
   use Richards_module, only : RichardsComputeMassBalance
   use Mphase_module, only : MphaseComputeMassBalance
   use TH_module, only : THComputeMassBalance
+  use THC_module, only : THCComputeConservation
   use Reactive_Transport_module, only : RTComputeMassBalance
   use NW_Transport_module, only : NWTComputeMassBalance
   use General_module, only : GeneralComputeMassBalance
@@ -223,7 +224,7 @@ subroutine OutputConservation(realization_base)
 
   select case(option%iflowmode)
     case(NULL_MODE)
-    case(RICHARDS_MODE,TH_MODE,SCO2_MODE,G_MODE)
+    case(RICHARDS_MODE,TH_MODE,THC_MODE,SCO2_MODE,G_MODE)
     case default
       option%io_buffer = 'Mass and energy conservation must be set up &
         &for the "' // trim(option%flowmode) // '" flow mode.'
@@ -308,7 +309,8 @@ subroutine OutputConservation(realization_base)
           case(ZFLOW_MODE)
 !            call ZFlowComputeMassBalance(realization_base,sum_kg(1,:))
           case(THC_MODE)
-!            call THCComputeMassBalance(realization_base,sum_kg(1,:))
+            call THCComputeConservation(realization_base,sum_eq(1), &
+                                        sum_eq(2),sum_eq(3))
           case(TH_MODE,TH_TS_MODE)
             call THComputeMassBalance(realization_base,sum_eq(1),sum_eq(2))
           case(MPH_MODE)
@@ -335,7 +337,7 @@ subroutine OutputConservation(realization_base)
     end select
 
     select case(option%iflowmode)
-      case(RICHARDS_MODE,RICHARDS_TS_MODE,TH_MODE,TH_TS_MODE)
+      case(RICHARDS_MODE,RICHARDS_TS_MODE,TH_MODE,TH_TS_MODE,THC_MODE)
         int_mpi = option%nflowdof
         call MPI_Reduce(sum_eq,sum_eq_global,int_mpi,MPI_DOUBLE_PRECISION, &
                         MPI_SUM,option%comm%io_rank,option%mycomm, &
@@ -379,7 +381,7 @@ subroutine OutputConservation(realization_base)
       select case(option%iflowmode)
         case(RICHARDS_MODE,RICHARDS_TS_MODE)
           call WriteRealNoAdv(fid,sum_eq_global(1:option%nflowdof))
-        case(TH_MODE,TH_TS_MODE)
+        case(TH_MODE,TH_TS_MODE,THC_MODE)
           call WriteRealNoAdv(fid,sum_eq_global(1:option%nflowdof))
         case(G_MODE)
           do iphase = 1, option%nphase
