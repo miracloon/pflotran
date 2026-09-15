@@ -255,6 +255,14 @@ subroutine PMTHCReadSimOptionsBlock(this,input)
       case('DEBUG_CELL_ID')
         call InputReadInt(input,option,thc_debug_cell_id)
         call InputErrorMsg(input,option,keyword,error_string)
+      case('SHEAR_THINNING_FLUID')
+        ! store_darcy_vel allocates global_auxvar%darcy_vel; the velocity
+        ! is filled in GlobalSetAuxVarsAtTimeLevel, which is only called
+        ! when store_state_variables_in_global is set (and that flag also
+        ! allocates the TIME_T / TIME_TpDT store arrays that routine writes).
+        option%flow%store_darcy_vel = PETSC_TRUE
+        option%flow%store_state_variables_in_global = PETSC_TRUE
+        thc_shear_thinning = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(input,keyword,'THC Mode',option)
     end select

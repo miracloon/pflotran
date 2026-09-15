@@ -63,6 +63,10 @@ module THC_Aux_module
   PetscBool, public :: thc_tensorial_rel_perm = PETSC_FALSE
   PetscBool, public :: thc_acknowledge_no_compress = PETSC_FALSE
 
+  ! non-Newtonian Cross-model shear-thinning viscosity (replaces the brine
+  ! T,C viscosity when enabled; requires option%flow%store_darcy_vel)
+  PetscBool, public :: thc_shear_thinning = PETSC_FALSE
+
   ! debugging
   PetscInt, public :: thc_ni_count
   PetscInt, public :: thc_ts_cut_count
@@ -391,6 +395,7 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   PetscInt :: imat
   PetscReal :: arrhenius_scale
   PetscReal :: pw, dpw_dp
+  PetscReal :: darcy_vel_mag
   PetscReal :: dummy_dist(-1:3)
   PetscBool :: saturated
   PetscReal :: dkr_dsat
@@ -509,15 +514,28 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! --------------------------------------------------------------------------
   ! Step 6: liquid viscosity mu_l(T,C) and its derivatives
   ! --------------------------------------------------------------------------
-  call THCViscosityAndDerivs(thc_auxvar%temp,pw, &
-                                 thc_auxvar%conc,thc_auxvar%den_kg, &
-                                 thc_auxvar%vis, &
-                                 thc_auxvar%dvis_dT,thc_auxvar%dvis_dC, &
-                                 ierr)
-  if (ierr /= 0) then
-    option%io_buffer = 'Error computing THC liquid viscosity in &
-      &THCAuxVarCompute.'
-    call PrintErrMsg(option)
+  ! darcy_vel is lagged (previous iterate/timestep); only populated when
+  ! option%flow%store_darcy_vel is set (done automatically by
+  ! SHEAR_THINNING_FLUID). When shear thinning is active it fully overrides
+  ! the brine/pure-water viscosity, so THCViscosityAndDerivs is skipped
+  ! rather than computed and discarded.
+  if (thc_shear_thinning) then
+    darcy_vel_mag = 0.d0
+    if (associated(global_auxvar%darcy_vel)) then
+      darcy_vel_mag = global_auxvar%darcy_vel(option%liquid_phase)
+    endif
+    call THCShearThinningViscosity(thc_auxvar,material_auxvar,darcy_vel_mag)
+  else
+    call THCViscosityAndDerivs(thc_auxvar%temp,pw, &
+                                   thc_auxvar%conc,thc_auxvar%den_kg, &
+                                   thc_auxvar%vis, &
+                                   thc_auxvar%dvis_dT,thc_auxvar%dvis_dC, &
+                                   ierr)
+    if (ierr /= 0) then
+      option%io_buffer = 'Error computing THC liquid viscosity in &
+        &THCAuxVarCompute.'
+      call PrintErrMsg(option)
+    endif
   endif
 
   ! --------------------------------------------------------------------------
@@ -609,6 +627,70 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
                  thc_auxvar%dvis_dC
 
 end subroutine THCAuxVarCompute
+
+! ************************************************************************** !
+
+subroutine THCShearThinningViscosity(thc_auxvar,material_auxvar,darcy_vel)
+  !
+  ! Non-Newtonian Cross-model viscosity mu_l(C,gamma) for a shear-thinning
+  ! fluid, where C (thc_auxvar%conc) is reinterpreted as the shear-thinning
+  ! agent's concentration and gamma is the shear rate estimated from the
+  ! lagged Darcy velocity and pore geometry sqrt(k*phi) (ported from
+  ! compositional_flow's CompFlowViscosity, per Katie's documentation).
+  ! Overrides thc_auxvar%vis, %dvis_dT (forced to 0; the model is
+  ! T-independent), and %dvis_dC.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/14/26
+  !
+  implicit none
+
+  type(thc_auxvar_type) :: thc_auxvar
+  type(material_auxvar_type) :: material_auxvar
+  PetscReal :: darcy_vel  ! lagged Darcy velocity [m/s]
+
+  PetscReal, parameter :: st_a = 1.16d-9
+  PetscReal, parameter :: st_b = 2.769d0
+  PetscReal, parameter :: st_alpha = 7.61d-9
+  PetscReal, parameter :: st_beta = 2.737d0
+  PetscReal, parameter :: st_n = 0.7d0
+  PetscReal, parameter :: st_alpha_shear = 6.d0
+  PetscReal, parameter :: st_mu_inf = 1.d-3
+  PetscReal :: mu_0, K, gamma, K_gamma, K_gamma_n
+  PetscReal :: one_over_one_plus_K_gamma_n
+  PetscReal :: dmu_0_dC, dK_dC, df_dC
+  PetscReal :: C
+
+  C = thc_auxvar%conc
+  if (C <= 0.d0) then
+    thc_auxvar%vis = st_mu_inf
+    thc_auxvar%dvis_dT = 0.d0
+    thc_auxvar%dvis_dC = 0.d0
+    return
+  endif
+
+  mu_0 = st_a * C**st_b + st_mu_inf
+  K = st_alpha * C**st_beta
+  gamma = st_alpha_shear * dabs(darcy_vel) / &
+          sqrt(material_auxvar%permeability(1) * material_auxvar%porosity)
+  K_gamma = K * gamma
+  K_gamma_n = K_gamma**st_n
+  one_over_one_plus_K_gamma_n = 1.d0 / (1.d0 + K_gamma_n)
+  thc_auxvar%vis = mu_0 * one_over_one_plus_K_gamma_n
+  ! gamma held fixed (lagged); model is T-independent by construction
+  thc_auxvar%dvis_dT = 0.d0
+  dmu_0_dC = st_b * st_a * C**(st_b - 1.d0)
+  if (K_gamma > 0.d0) then
+    dK_dC = st_beta * st_alpha * C**(st_beta - 1.d0)
+    df_dC = -st_n * one_over_one_plus_K_gamma_n**2 * &
+            K_gamma**(st_n - 1.d0) * gamma * dK_dC
+  else
+    df_dC = 0.d0
+  endif
+  thc_auxvar%dvis_dC = mu_0 * df_dC + &
+                       one_over_one_plus_K_gamma_n * dmu_0_dC
+
+end subroutine THCShearThinningViscosity
 
 ! ************************************************************************** !
 
