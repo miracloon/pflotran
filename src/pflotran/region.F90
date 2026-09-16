@@ -21,6 +21,19 @@ module Region_module
   PetscInt, parameter, public :: DEFINED_BY_POLY_BOUNDARY_FACE = 8
   PetscInt, parameter, public :: DEFINED_BY_POLY_CELL_CENTER = 9
   PetscInt, parameter, public :: DEFINED_BY_CARTESIAN_BOUNDARY = 10
+  PetscInt, parameter, public :: DEFINED_BY_PLANAR_PATCH = 11
+  PetscInt, parameter, public :: PLANAR_PATCH_ELLIPSE = 1
+  PetscInt, parameter, public :: PLANAR_PATCH_RECTANGLE = 2
+
+  type, public :: planar_patch_type
+    PetscReal :: centroid(3)
+    PetscReal :: normal(3)
+    PetscReal :: axis1(3)
+    PetscReal :: axis2(3)
+    PetscReal :: radii(2)
+    PetscReal :: half_thickness
+    PetscInt :: shape
+  end type planar_patch_type
 
   type, public :: block_type
     PetscInt :: i1,i2,j1,j2,k1,k2
@@ -45,6 +58,7 @@ module Region_module
     type(region_sideset_type), pointer :: sideset
     type(region_explicit_face_type), pointer :: explicit_faceset
     type(polygonal_volume_type), pointer :: polygonal_volume
+    type(planar_patch_type), pointer :: planar_patch
     type(region_type), pointer :: next
   end type region_type
 
@@ -94,6 +108,10 @@ module Region_module
             RegionCreateSideset, &
             RegionCheckCellIndexBounds, &
             RegionInputRecord, &
+            RegionPointInPlanarPatch, &
+            RegionPatchCellMayHit, &
+            RegionPatchHitsPolyhedron, &
+            RegionPatchHitsSphere, &
             RegionDestroy
 
 contains
@@ -137,6 +155,7 @@ function RegionCreateWithNothing()
   nullify(region%sideset)
   nullify(region%explicit_faceset)
   nullify(region%polygonal_volume)
+  nullify(region%planar_patch)
   nullify(region%next)
 
   RegionCreateWithNothing => region
@@ -346,6 +365,10 @@ function RegionCreateWithRegion(region)
                                    new_region%polygonal_volume%yz_coordinates)
     endif
   endif
+  if (associated(region%planar_patch)) then
+    call RegionCopyPlanarPatch(region%planar_patch, &
+                               new_region%planar_patch)
+  endif
 
   RegionCreateWithRegion => new_region
 
@@ -547,6 +570,8 @@ subroutine RegionRead(region,input,option)
           end select
         enddo
         call InputPopBlock(input,option)
+      case('PLANAR_PATCH')
+        call RegionReadPlanarPatch(region,input,option)
       case('FILE')
         call InputReadFilename(input,option,region%filename)
         call InputErrorMsg(input,option,'filename','REGION')
@@ -597,6 +622,159 @@ subroutine RegionRead(region,input,option)
   call InputPopBlock(input,option)
 
 end subroutine RegionRead
+
+! ************************************************************************** !
+
+subroutine RegionReadPlanarPatch(region,input,option)
+  !
+  ! Reads a PLANAR_PATCH sub-block and sets up the orthonormal
+  ! frame.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  use Input_Aux_module
+  use String_module
+  use Option_module
+
+  implicit none
+
+  type(region_type) :: region
+  type(input_type), pointer :: input
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: centroid(3)
+  PetscReal :: radii(2)
+  PetscReal :: half_thickness
+  PetscReal :: angles(2)
+  PetscReal :: normal(3)
+  PetscReal :: axis(3)
+  PetscBool :: found_centroid
+  PetscBool :: found_radii
+  PetscBool :: found_thickness
+  PetscBool :: found_angles
+  PetscBool :: found_normal
+  PetscBool :: found_axis
+  PetscInt :: patch_shape
+
+  region%def_type = DEFINED_BY_PLANAR_PATCH
+  region%planar_patch => RegionCreatePlanarPatch()
+  found_centroid = PETSC_FALSE
+  found_radii = PETSC_FALSE
+  found_thickness = PETSC_FALSE
+  found_angles = PETSC_FALSE
+  found_normal = PETSC_FALSE
+  found_axis = PETSC_FALSE
+  patch_shape = PLANAR_PATCH_ELLIPSE
+  call InputPushBlock(input,option)
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    call InputReadCard(input,option,word)
+    call InputErrorMsg(input,option,'keyword','REGION PLANAR_PATCH')
+    call StringToUpper(word)
+    select case(trim(word))
+      case('CENTROID')
+        call InputReadNDoubles(input,option,centroid,THREE_INTEGER)
+        call InputErrorMsg(input,option,'CENTROID', &
+                           'REGION PLANAR_PATCH')
+        found_centroid = PETSC_TRUE
+      case('ANGLES')
+        call InputReadNDoubles(input,option,angles,TWO_INTEGER)
+        call InputErrorMsg(input,option,'ANGLES', &
+                           'REGION PLANAR_PATCH')
+        found_angles = PETSC_TRUE
+      case('NORMAL')
+        call InputReadNDoubles(input,option,normal,THREE_INTEGER)
+        call InputErrorMsg(input,option,'NORMAL', &
+                           'REGION PLANAR_PATCH')
+        found_normal = PETSC_TRUE
+      case('AXIS')
+        call InputReadNDoubles(input,option,axis,THREE_INTEGER)
+        call InputErrorMsg(input,option,'AXIS', &
+                           'REGION PLANAR_PATCH')
+        found_axis = PETSC_TRUE
+      case('RADII')
+        call InputReadNDoubles(input,option,radii,TWO_INTEGER)
+        call InputErrorMsg(input,option,'RADII', &
+                           'REGION PLANAR_PATCH')
+        found_radii = PETSC_TRUE
+      case('HALF_THICKNESS')
+        call InputReadDouble(input,option,half_thickness)
+        call InputErrorMsg(input,option,'HALF_THICKNESS', &
+                           'REGION PLANAR_PATCH')
+        found_thickness = PETSC_TRUE
+      case('SHAPE')
+        call InputReadCard(input,option,word)
+        call InputErrorMsg(input,option,'SHAPE', &
+                           'REGION PLANAR_PATCH')
+        call StringToUpper(word)
+        select case(trim(word))
+          case('ELLIPSE')
+            patch_shape = PLANAR_PATCH_ELLIPSE
+          case('RECTANGLE')
+            patch_shape = PLANAR_PATCH_RECTANGLE
+          case default
+            option%io_buffer = 'REGION PLANAR_PATCH SHAPE "' // &
+              trim(word) // '" not recognized. Use ELLIPSE or &
+              &RECTANGLE.'
+            call PrintErrMsg(option)
+        end select
+      case default
+        call InputKeywordUnrecognized(input,word, &
+                                      'REGION PLANAR_PATCH',option)
+    end select
+  enddo
+  call InputPopBlock(input,option)
+  if (.not.found_centroid) then
+    option%io_buffer = 'REGION PLANAR_PATCH requires CENTROID.'
+    call PrintErrMsg(option)
+  endif
+  if (.not.found_radii) then
+    option%io_buffer = 'REGION PLANAR_PATCH requires RADII.'
+    call PrintErrMsg(option)
+  endif
+  if (.not.found_thickness) then
+    option%io_buffer = 'REGION PLANAR_PATCH requires HALF_THICKNESS.'
+    call PrintErrMsg(option)
+  endif
+  if (radii(1) <= 0.d0 .or. radii(2) <= 0.d0) then
+    option%io_buffer = 'REGION PLANAR_PATCH RADII must be positive.'
+    call PrintErrMsg(option)
+  endif
+  if (half_thickness <= 0.d0) then
+    option%io_buffer = 'REGION PLANAR_PATCH HALF_THICKNESS must &
+      &be greater than zero.'
+    call PrintErrMsg(option)
+  endif
+  if (found_angles .and. found_normal) then
+    option%io_buffer = 'REGION PLANAR_PATCH accepts ANGLES or &
+      &NORMAL, not both.'
+    call PrintErrMsg(option)
+  endif
+  if (.not.found_angles .and. .not.found_normal) then
+    option%io_buffer = 'REGION PLANAR_PATCH requires ANGLES or &
+      &NORMAL.'
+    call PrintErrMsg(option)
+  endif
+  if (found_normal .and. .not.found_axis) then
+    option%io_buffer = 'REGION PLANAR_PATCH NORMAL requires AXIS.'
+    call PrintErrMsg(option)
+  endif
+  if (found_angles) then
+    call RegionSetupPatchAngles(region%planar_patch,centroid, &
+                                angles(1),angles(2),radii, &
+                                half_thickness,patch_shape,option)
+  else
+    call RegionSetupPatchNormal(region%planar_patch,centroid, &
+                                normal,axis,radii,half_thickness, &
+                                patch_shape,option)
+  endif
+
+end subroutine RegionReadPlanarPatch
 
 ! ************************************************************************** !
 
@@ -1408,6 +1586,10 @@ subroutine RegionInputRecord(region_list)
         write(id,'(a29)',advance='no') 'defined by: '
         write(id,'(a)') 'POLYGON CELL CENTERS IN VOLUME'
     !--------------------------------
+      case (DEFINED_BY_PLANAR_PATCH)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'PLANAR PATCH'
+    !--------------------------------
     end select
 
     if (cur_region%iface /= 0) then
@@ -1525,6 +1707,771 @@ end subroutine RegionDestroyList
 
 ! ************************************************************************** !
 
+function RegionCreatePlanarPatch()
+  !
+  ! Creates a planar patch (ellipse or rectangle) with finite
+  ! thickness along the plane normal.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  implicit none
+
+  type(planar_patch_type), pointer :: RegionCreatePlanarPatch
+
+  type(planar_patch_type), pointer :: patch
+
+  allocate(patch)
+  patch%centroid = UNINITIALIZED_DOUBLE
+  patch%normal = UNINITIALIZED_DOUBLE
+  patch%axis1 = UNINITIALIZED_DOUBLE
+  patch%axis2 = UNINITIALIZED_DOUBLE
+  patch%radii = UNINITIALIZED_DOUBLE
+  patch%half_thickness = UNINITIALIZED_DOUBLE
+  patch%shape = PLANAR_PATCH_ELLIPSE
+
+  RegionCreatePlanarPatch => patch
+
+end function RegionCreatePlanarPatch
+
+! ************************************************************************** !
+
+subroutine RegionSetupPatchAngles(patch,centroid,angle_xy,angle_xz, &
+                                  radii,half_thickness,shape,option)
+  !
+  ! Builds the orthonormal frame from XY- and XZ-trace angles
+  ! (degrees from +X).
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  use Option_module
+
+  implicit none
+
+  type(planar_patch_type) :: patch
+  PetscReal :: centroid(3)
+  PetscReal :: angle_xy
+  PetscReal :: angle_xz
+  PetscReal :: radii(2)
+  PetscReal :: half_thickness
+  PetscInt :: shape
+  type(option_type) :: option
+
+  PetscReal :: u(3)
+  PetscReal :: v(3)
+  PetscReal :: n(3)
+  PetscReal :: e1(3)
+  PetscReal :: e2(3)
+  PetscReal :: nrm
+  PetscReal :: deg_to_rad
+
+  deg_to_rad = PI / 180.d0
+  u(1) = cos(angle_xy*deg_to_rad)
+  u(2) = sin(angle_xy*deg_to_rad)
+  u(3) = 0.d0
+  v(1) = cos(angle_xz*deg_to_rad)
+  v(2) = 0.d0
+  v(3) = sin(angle_xz*deg_to_rad)
+  call PatchCrossProduct(u,v,n)
+  nrm = sqrt(n(1)**2+n(2)**2+n(3)**2)
+  if (nrm < 1.d-12) then
+    option%io_buffer = 'PLANAR_PATCH ANGLES produce parallel traces.'
+    call PrintErrMsg(option)
+  endif
+  n = n / nrm
+  nrm = sqrt(u(1)**2+u(2)**2+u(3)**2)
+  e1 = u / nrm
+  call PatchCrossProduct(n,e1,e2)
+  nrm = sqrt(e2(1)**2+e2(2)**2+e2(3)**2)
+  e2 = e2 / nrm
+  patch%centroid = centroid
+  patch%normal = n
+  patch%axis1 = e1
+  patch%axis2 = e2
+  patch%radii = radii
+  patch%half_thickness = half_thickness
+  patch%shape = shape
+
+end subroutine RegionSetupPatchAngles
+
+! ************************************************************************** !
+
+subroutine RegionSetupPatchNormal(patch,centroid,normal,axis, &
+                                  radii,half_thickness,shape,option)
+  !
+  ! Builds the orthonormal frame from a plane normal and an
+  ! in-plane axis (projected onto the plane).
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  use Option_module
+
+  implicit none
+
+  type(planar_patch_type) :: patch
+  PetscReal :: centroid(3)
+  PetscReal :: normal(3)
+  PetscReal :: axis(3)
+  PetscReal :: radii(2)
+  PetscReal :: half_thickness
+  PetscInt :: shape
+  type(option_type) :: option
+
+  PetscReal :: n(3)
+  PetscReal :: e1(3)
+  PetscReal :: e2(3)
+  PetscReal :: nrm
+  PetscReal :: n_dot_a
+
+  nrm = sqrt(normal(1)**2+normal(2)**2+normal(3)**2)
+  if (nrm < 1.d-12) then
+    option%io_buffer = 'PLANAR_PATCH NORMAL has zero length.'
+    call PrintErrMsg(option)
+  endif
+  n = normal / nrm
+  n_dot_a = axis(1)*n(1) + axis(2)*n(2) + axis(3)*n(3)
+  e1(1) = axis(1) - n_dot_a*n(1)
+  e1(2) = axis(2) - n_dot_a*n(2)
+  e1(3) = axis(3) - n_dot_a*n(3)
+  nrm = sqrt(e1(1)**2+e1(2)**2+e1(3)**2)
+  if (nrm < 1.d-12) then
+    option%io_buffer = 'PLANAR_PATCH AXIS is parallel to NORMAL.'
+    call PrintErrMsg(option)
+  endif
+  e1 = e1 / nrm
+  call PatchCrossProduct(n,e1,e2)
+  nrm = sqrt(e2(1)**2+e2(2)**2+e2(3)**2)
+  e2 = e2 / nrm
+  patch%centroid = centroid
+  patch%normal = n
+  patch%axis1 = e1
+  patch%axis2 = e2
+  patch%radii = radii
+  patch%half_thickness = half_thickness
+  patch%shape = shape
+
+end subroutine RegionSetupPatchNormal
+
+! ************************************************************************** !
+
+function RegionPointInPlanarPatch(x,y,z,patch)
+  !
+  ! True if (x,y,z) lies in the finite-thickness planar patch.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  implicit none
+
+  PetscReal :: x
+  PetscReal :: y
+  PetscReal :: z
+  type(planar_patch_type) :: patch
+
+  PetscBool :: RegionPointInPlanarPatch
+
+  PetscReal :: dx
+  PetscReal :: dy
+  PetscReal :: dz
+  PetscReal :: dist_n
+  PetscReal :: xi
+  PetscReal :: eta
+
+  RegionPointInPlanarPatch = PETSC_FALSE
+  dx = x - patch%centroid(1)
+  dy = y - patch%centroid(2)
+  dz = z - patch%centroid(3)
+  dist_n = dx*patch%normal(1) + dy*patch%normal(2) + dz*patch%normal(3)
+  if (abs(dist_n) > patch%half_thickness) return
+  xi = dx*patch%axis1(1) + dy*patch%axis1(2) + dz*patch%axis1(3)
+  eta = dx*patch%axis2(1) + dy*patch%axis2(2) + dz*patch%axis2(3)
+  select case(patch%shape)
+    case(PLANAR_PATCH_ELLIPSE)
+      if ((xi/patch%radii(1))**2 + (eta/patch%radii(2))**2 <= 1.d0) then
+        RegionPointInPlanarPatch = PETSC_TRUE
+      endif
+    case(PLANAR_PATCH_RECTANGLE)
+      if (abs(xi) <= patch%radii(1) .and. abs(eta) <= patch%radii(2)) then
+        RegionPointInPlanarPatch = PETSC_TRUE
+      endif
+  end select
+
+end function RegionPointInPlanarPatch
+
+! ************************************************************************** !
+
+function RegionPatchCellMayHit(patch,cx,cy,cz,radius)
+  !
+  ! Conservative circumsphere test: false means the cell cannot
+  ! meet the patch. True means it might; run the exact test.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  implicit none
+
+  type(planar_patch_type) :: patch
+  PetscReal :: cx
+  PetscReal :: cy
+  PetscReal :: cz
+  PetscReal :: radius
+
+  PetscBool :: RegionPatchCellMayHit
+
+  PetscReal :: dx
+  PetscReal :: dy
+  PetscReal :: dz
+  PetscReal :: dist_n
+  PetscReal :: xi
+  PetscReal :: eta
+
+  RegionPatchCellMayHit = PETSC_FALSE
+  if (radius < 0.d0) return
+  dx = cx - patch%centroid(1)
+  dy = cy - patch%centroid(2)
+  dz = cz - patch%centroid(3)
+  dist_n = dx*patch%normal(1) + dy*patch%normal(2) + dz*patch%normal(3)
+  if (abs(dist_n) > radius + patch%half_thickness) return
+  xi = dx*patch%axis1(1) + dy*patch%axis1(2) + dz*patch%axis1(3)
+  eta = dx*patch%axis2(1) + dy*patch%axis2(2) + dz*patch%axis2(3)
+  select case(patch%shape)
+    case(PLANAR_PATCH_ELLIPSE)
+      RegionPatchCellMayHit = PatchCircleHitsEllipse(xi,eta,radius, &
+                                      patch%radii(1),patch%radii(2))
+    case(PLANAR_PATCH_RECTANGLE)
+      RegionPatchCellMayHit = PatchCircleHitsRectangle(xi,eta,radius, &
+                                      patch%radii(1),patch%radii(2))
+  end select
+
+end function RegionPatchCellMayHit
+
+! ************************************************************************** !
+
+function RegionPatchHitsPolyhedron(patch,x,y,z,nvert, &
+                                   dist,qx,qy,qz,xi,eta,lwork)
+  !
+  ! True if a convex cell (vertex list) intersects the planar patch.
+  ! dist(nvert) and qx,qy,qz,xi,eta(lwork) are caller scratch.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  implicit none
+
+  type(planar_patch_type) :: patch
+  PetscInt :: nvert
+  PetscReal :: x(nvert)
+  PetscReal :: y(nvert)
+  PetscReal :: z(nvert)
+  PetscReal :: dist(nvert)
+  PetscInt :: lwork
+  PetscReal :: qx(lwork)
+  PetscReal :: qy(lwork)
+  PetscReal :: qz(lwork)
+  PetscReal :: xi(lwork)
+  PetscReal :: eta(lwork)
+
+  PetscBool :: RegionPatchHitsPolyhedron
+
+  PetscInt :: i
+  PetscInt :: j
+  PetscInt :: nq
+  PetscReal :: di
+  PetscReal :: dj
+  PetscReal :: t
+  PetscReal :: h
+  PetscReal :: px
+  PetscReal :: py
+  PetscReal :: pz
+
+  RegionPatchHitsPolyhedron = PETSC_FALSE
+  if (nvert < 1) return
+
+  h = patch%half_thickness
+  do i = 1, nvert
+    dist(i) = (x(i)-patch%centroid(1))*patch%normal(1) + &
+              (y(i)-patch%centroid(2))*patch%normal(2) + &
+              (z(i)-patch%centroid(3))*patch%normal(3)
+  enddo
+  if (maxval(dist(1:nvert)) < -h .or. minval(dist(1:nvert)) > h) return
+
+  nq = 0
+  do i = 1, nvert
+    if (abs(dist(i)) <= h) then
+      nq = nq + 1
+      qx(nq) = x(i)
+      qy(nq) = y(i)
+      qz(nq) = z(i)
+    endif
+  enddo
+  do i = 1, nvert-1
+    do j = i+1, nvert
+      di = dist(i)
+      dj = dist(j)
+      if ((di-h)*(dj-h) < 0.d0 .and. nq < lwork) then
+        t = (h-di)/(dj-di)
+        nq = nq + 1
+        qx(nq) = x(i) + t*(x(j)-x(i))
+        qy(nq) = y(i) + t*(y(j)-y(i))
+        qz(nq) = z(i) + t*(z(j)-z(i))
+      endif
+      if ((di+h)*(dj+h) < 0.d0 .and. nq < lwork) then
+        t = (-h-di)/(dj-di)
+        nq = nq + 1
+        qx(nq) = x(i) + t*(x(j)-x(i))
+        qy(nq) = y(i) + t*(y(j)-y(i))
+        qz(nq) = z(i) + t*(z(j)-z(i))
+      endif
+    enddo
+  enddo
+  if (nq < 1) return
+
+  do i = 1, nq
+    px = qx(i) - patch%centroid(1)
+    py = qy(i) - patch%centroid(2)
+    pz = qz(i) - patch%centroid(3)
+    xi(i) = px*patch%axis1(1) + py*patch%axis1(2) + pz*patch%axis1(3)
+    eta(i) = px*patch%axis2(1) + py*patch%axis2(2) + pz*patch%axis2(3)
+  enddo
+  RegionPatchHitsPolyhedron = PatchPolygonHitsPatch(xi,eta,nq,patch)
+
+end function RegionPatchHitsPolyhedron
+
+! ************************************************************************** !
+
+function RegionPatchHitsSphere(patch,cx,cy,cz,volume)
+  !
+  ! True if a sphere of equal volume at (cx,cy,cz) meets the patch:
+  ! the sphere is projected onto the patch plane and the resulting
+  ! circle is tested against the ellipse or rectangle.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  implicit none
+
+  type(planar_patch_type) :: patch
+  PetscReal :: cx
+  PetscReal :: cy
+  PetscReal :: cz
+  PetscReal :: volume
+
+  PetscBool :: RegionPatchHitsSphere
+
+  PetscReal :: radius
+
+  RegionPatchHitsSphere = PETSC_FALSE
+  if (volume <= 0.d0) return
+  radius = (0.75d0*volume/PI)**(1.d0/3.d0)
+  RegionPatchHitsSphere = RegionPatchCellMayHit(patch,cx,cy,cz,radius)
+
+end function RegionPatchHitsSphere
+
+! ************************************************************************** !
+
+function PatchPolygonHitsPatch(xi,eta,n,patch)
+  !
+  ! True if a convex 2D polygon overlaps the in-plane ellipse or
+  ! rectangle.
+  !
+
+  implicit none
+
+  PetscInt :: n
+  PetscReal :: xi(n)
+  PetscReal :: eta(n)
+  type(planar_patch_type) :: patch
+
+  PetscBool :: PatchPolygonHitsPatch
+
+  PetscInt :: i
+  PetscReal :: a
+  PetscReal :: b
+
+  PatchPolygonHitsPatch = PETSC_FALSE
+  if (n < 1) return
+  a = patch%radii(1)
+  b = patch%radii(2)
+  do i = 1, n
+    select case(patch%shape)
+      case(PLANAR_PATCH_ELLIPSE)
+        if ((xi(i)/a)**2 + (eta(i)/b)**2 <= 1.d0) then
+          PatchPolygonHitsPatch = PETSC_TRUE
+          return
+        endif
+      case(PLANAR_PATCH_RECTANGLE)
+        if (abs(xi(i)) <= a .and. abs(eta(i)) <= b) then
+          PatchPolygonHitsPatch = PETSC_TRUE
+          return
+        endif
+    end select
+  enddo
+  if (n >= 3) then
+    if (PatchOriginInPolygon(xi,eta,n)) then
+      PatchPolygonHitsPatch = PETSC_TRUE
+      return
+    endif
+  endif
+  do i = 1, n
+    select case(patch%shape)
+      case(PLANAR_PATCH_ELLIPSE)
+        if (PatchSegmentHitsEllipse(xi(i),eta(i), &
+              xi(mod(i,n)+1),eta(mod(i,n)+1),a,b)) then
+          PatchPolygonHitsPatch = PETSC_TRUE
+          return
+        endif
+      case(PLANAR_PATCH_RECTANGLE)
+        if (PatchSegmentHitsRectangle(xi(i),eta(i), &
+              xi(mod(i,n)+1),eta(mod(i,n)+1),a,b)) then
+          PatchPolygonHitsPatch = PETSC_TRUE
+          return
+        endif
+    end select
+  enddo
+
+end function PatchPolygonHitsPatch
+
+! ************************************************************************** !
+
+function PatchOriginInPolygon(xi,eta,n)
+  !
+  ! Even-odd test of whether (0,0) is inside a 2D polygon.
+  !
+
+  implicit none
+
+  PetscInt :: n
+  PetscReal :: xi(n)
+  PetscReal :: eta(n)
+
+  PetscBool :: PatchOriginInPolygon
+
+  PetscInt :: i
+  PetscInt :: j
+  PetscReal :: xhit
+
+  PatchOriginInPolygon = PETSC_FALSE
+  j = n
+  do i = 1, n
+    if ((eta(i) < 0.d0 .and. eta(j) >= 0.d0) .or. &
+        (eta(j) < 0.d0 .and. eta(i) >= 0.d0)) then
+      xhit = xi(i) + (0.d0-eta(i))/(eta(j)-eta(i))*(xi(j)-xi(i))
+      if (xhit < 0.d0) then
+        PatchOriginInPolygon = .not.PatchOriginInPolygon
+      endif
+    endif
+    j = i
+  enddo
+
+end function PatchOriginInPolygon
+
+! ************************************************************************** !
+
+function PatchSegmentHitsEllipse(x1,y1,x2,y2,a,b)
+  !
+  ! True if segment (x1,y1)-(x2,y2) intersects the filled ellipse.
+  !
+
+  implicit none
+
+  PetscReal :: x1, y1, x2, y2
+  PetscReal :: a, b
+
+  PetscBool :: PatchSegmentHitsEllipse
+
+  PetscReal :: dx
+  PetscReal :: dy
+  PetscReal :: aa
+  PetscReal :: bb
+  PetscReal :: cc
+  PetscReal :: disc
+  PetscReal :: t
+  PetscReal :: sqrt_disc
+
+  PatchSegmentHitsEllipse = PETSC_FALSE
+  if ((x1/a)**2+(y1/b)**2 <= 1.d0) then
+    PatchSegmentHitsEllipse = PETSC_TRUE
+    return
+  endif
+  if ((x2/a)**2+(y2/b)**2 <= 1.d0) then
+    PatchSegmentHitsEllipse = PETSC_TRUE
+    return
+  endif
+  dx = x2 - x1
+  dy = y2 - y1
+  aa = dx*dx/(a*a) + dy*dy/(b*b)
+  bb = 2.d0*(x1*dx/(a*a) + y1*dy/(b*b))
+  cc = x1*x1/(a*a) + y1*y1/(b*b) - 1.d0
+  if (aa < 1.d-30) return
+  disc = bb*bb - 4.d0*aa*cc
+  if (disc < 0.d0) return
+  sqrt_disc = sqrt(disc)
+  t = (-bb - sqrt_disc)/(2.d0*aa)
+  if (t >= 0.d0 .and. t <= 1.d0) then
+    PatchSegmentHitsEllipse = PETSC_TRUE
+    return
+  endif
+  t = (-bb + sqrt_disc)/(2.d0*aa)
+  if (t >= 0.d0 .and. t <= 1.d0) then
+    PatchSegmentHitsEllipse = PETSC_TRUE
+  endif
+
+end function PatchSegmentHitsEllipse
+
+! ************************************************************************** !
+
+function PatchSegmentHitsRectangle(x1,y1,x2,y2,a,b)
+  !
+  ! True if segment intersects the filled rectangle [-a,a] x [-b,b].
+  !
+
+  implicit none
+
+  PetscReal :: x1, y1, x2, y2
+  PetscReal :: a, b
+
+  PetscBool :: PatchSegmentHitsRectangle
+
+  PetscReal :: dx
+  PetscReal :: dy
+  PetscReal :: t
+  PetscReal :: u
+  PetscReal :: qx
+  PetscReal :: qy
+  PetscReal :: rx
+  PetscReal :: ry
+  PetscReal :: sx
+  PetscReal :: sy
+  PetscReal :: rxs
+  PetscInt :: k
+  PetscReal :: ex1(4)
+  PetscReal :: ey1(4)
+  PetscReal :: ex2(4)
+  PetscReal :: ey2(4)
+
+  PatchSegmentHitsRectangle = PETSC_FALSE
+  if (abs(x1) <= a .and. abs(y1) <= b) then
+    PatchSegmentHitsRectangle = PETSC_TRUE
+    return
+  endif
+  if (abs(x2) <= a .and. abs(y2) <= b) then
+    PatchSegmentHitsRectangle = PETSC_TRUE
+    return
+  endif
+  ex1 = (/-a, a, -a, -a/)
+  ey1 = (/-b, -b, -b, b/)
+  ex2 = (/a, a, -a, a/)
+  ey2 = (/-b, b, b, b/)
+  dx = x2 - x1
+  dy = y2 - y1
+  do k = 1, 4
+    rx = dx
+    ry = dy
+    sx = ex2(k) - ex1(k)
+    sy = ey2(k) - ey1(k)
+    rxs = rx*sy - ry*sx
+    if (abs(rxs) < 1.d-30) cycle
+    qx = ex1(k) - x1
+    qy = ey1(k) - y1
+    t = (qx*sy - qy*sx)/rxs
+    u = (qx*ry - qy*rx)/rxs
+    if (t >= 0.d0 .and. t <= 1.d0 .and. u >= 0.d0 .and. u <= 1.d0) then
+      PatchSegmentHitsRectangle = PETSC_TRUE
+      return
+    endif
+  enddo
+
+end function PatchSegmentHitsRectangle
+
+! ************************************************************************** !
+
+function PatchCircleHitsEllipse(xi,eta,radius,a,b)
+  !
+  ! True if a circle overlaps a filled axis-aligned ellipse.
+  !
+
+  implicit none
+
+  PetscReal :: xi
+  PetscReal :: eta
+  PetscReal :: radius
+  PetscReal :: a
+  PetscReal :: b
+
+  PetscBool :: PatchCircleHitsEllipse
+
+  PetscReal :: px
+  PetscReal :: py
+  PetscReal :: u
+  PetscReal :: v
+
+  PatchCircleHitsEllipse = PETSC_FALSE
+  if ((xi/a)**2 + (eta/b)**2 <= 1.d0) then
+    PatchCircleHitsEllipse = PETSC_TRUE
+    return
+  endif
+  u = abs(xi)
+  v = abs(eta)
+  call PatchClosestOnEllipse(u,v,a,b,px,py)
+  if ((px-u)**2 + (py-v)**2 <= radius*radius) then
+    PatchCircleHitsEllipse = PETSC_TRUE
+  endif
+
+end function PatchCircleHitsEllipse
+
+! ************************************************************************** !
+
+function PatchCircleHitsRectangle(xi,eta,radius,a,b)
+  !
+  ! True if a circle overlaps the rectangle [-a,a] x [-b,b].
+  !
+
+  implicit none
+
+  PetscReal :: xi
+  PetscReal :: eta
+  PetscReal :: radius
+  PetscReal :: a
+  PetscReal :: b
+
+  PetscBool :: PatchCircleHitsRectangle
+
+  PetscReal :: qx
+  PetscReal :: qy
+
+  qx = min(a,max(-a,xi))
+  qy = min(b,max(-b,eta))
+  PatchCircleHitsRectangle = ((xi-qx)**2+(eta-qy)**2 <= radius*radius)
+
+end function PatchCircleHitsRectangle
+
+! ************************************************************************** !
+
+subroutine PatchClosestOnEllipse(u,v,a,b,x,y)
+  !
+  ! Closest point (x,y) on the ellipse x^2/a^2+y^2/b^2=1 to (u,v)
+  ! in the first quadrant (u>=0, v>=0).
+  !
+
+  implicit none
+
+  PetscReal :: u
+  PetscReal :: v
+  PetscReal :: a
+  PetscReal :: b
+  PetscReal :: x
+  PetscReal :: y
+
+  PetscReal :: t
+  PetscReal :: f
+  PetscReal :: df
+  PetscReal :: ta
+  PetscReal :: tb
+  PetscInt :: iter
+
+  if (v < 1.d-14) then
+    x = a
+    y = 0.d0
+    return
+  endif
+  if (u < 1.d-14) then
+    x = 0.d0
+    y = b
+    return
+  endif
+  t = b*v - b*b
+  do iter = 1, 25
+    ta = t + a*a
+    tb = t + b*b
+    if (abs(ta) < 1.d-30) ta = 1.d-30
+    if (abs(tb) < 1.d-30) tb = 1.d-30
+    f = (a*u/ta)**2 + (b*v/tb)**2 - 1.d0
+    df = -2.d0*((a*u)**2/ta**3 + (b*v)**2/tb**3)
+    if (abs(df) < 1.d-30) exit
+    t = t - f/df
+    if (t < -b*b + 1.d-8) t = -b*b + 1.d-8
+    if (abs(f) < 1.d-12) exit
+  enddo
+  x = a*a*u/(t+a*a)
+  y = b*b*v/(t+b*b)
+
+end subroutine PatchClosestOnEllipse
+
+! ************************************************************************** !
+
+subroutine RegionCopyPlanarPatch(patch_in,patch_out)
+  !
+  ! Deep-copies a planar patch object.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  implicit none
+
+  type(planar_patch_type) :: patch_in
+  type(planar_patch_type), pointer :: patch_out
+
+  patch_out => RegionCreatePlanarPatch()
+  patch_out%centroid = patch_in%centroid
+  patch_out%normal = patch_in%normal
+  patch_out%axis1 = patch_in%axis1
+  patch_out%axis2 = patch_in%axis2
+  patch_out%radii = patch_in%radii
+  patch_out%half_thickness = patch_in%half_thickness
+  patch_out%shape = patch_in%shape
+
+end subroutine RegionCopyPlanarPatch
+
+! ************************************************************************** !
+
+subroutine RegionDestroyPlanarPatch(patch)
+  !
+  ! Deallocates a planar patch object.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  implicit none
+
+  type(planar_patch_type), pointer :: patch
+
+  if (.not.associated(patch)) return
+  deallocate(patch)
+  nullify(patch)
+
+end subroutine RegionDestroyPlanarPatch
+
+! ************************************************************************** !
+
+subroutine PatchCrossProduct(a,b,c)
+  !
+  ! c = a x b for length-3 vectors.
+  !
+  implicit none
+
+  PetscReal :: a(3)
+  PetscReal :: b(3)
+  PetscReal :: c(3)
+
+  c(1) = a(2)*b(3) - a(3)*b(2)
+  c(2) = a(3)*b(1) - a(1)*b(3)
+  c(3) = a(1)*b(2) - a(2)*b(1)
+
+end subroutine PatchCrossProduct
+
+! ************************************************************************** !
+
 subroutine RegionDestroy(region)
   !
   ! Deallocates a region
@@ -1547,6 +2494,7 @@ subroutine RegionDestroy(region)
   call RegionDestroySideset(region%sideset)
   call RegionDestroyExplicitFaceSet(region%explicit_faceset)
   call GeometryDestroyPolygonalVolume(region%polygonal_volume)
+  call RegionDestroyPlanarPatch(region%planar_patch)
 
   if (associated(region%vertex_ids)) deallocate(region%vertex_ids)
   nullify(region%vertex_ids)

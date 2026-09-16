@@ -750,6 +750,14 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         if (associated(region%cell_ids)) then
           region%num_cells = size(region%cell_ids)
         endif
+      case (DEFINED_BY_PLANAR_PATCH)
+        call GridMapCellsInPlanarPatch(grid, &
+                                       region%planar_patch, &
+                                       region%name,option, &
+                                       region%cell_ids)
+        if (associated(region%cell_ids)) then
+          region%num_cells = size(region%cell_ids)
+        endif
       case default
         option%io_buffer = 'GridLocalizeRegions: Region definition not &
           &recognized for region "' // trim(region%name) // '".'
@@ -2097,6 +2105,191 @@ subroutine GridMapCellsInPolVol(grid,polygonal_volume, &
   deallocate(temp_int)
 
 end subroutine GridMapCellsInPolVol
+
+! ************************************************************************** !
+
+subroutine GridMapCellsInPlanarPatch(grid,planar_patch, &
+                                     region_name,option,cell_ids)
+  !
+  ! Maps local cells that intersect a planar patch. Structured and
+  ! implicit unstructured use a centroid circumsphere filter, then
+  ! cell vertices. Explicit unstructured uses a sphere of equal
+  ! volume at the cell centroid.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/11/26
+  !
+
+  use Option_module
+  use Region_module
+
+  implicit none
+
+  type(grid_type) :: grid
+  type(planar_patch_type) :: planar_patch
+  character(len=MAXWORDLENGTH) :: region_name
+  type(option_type) :: option
+  PetscInt, pointer :: cell_ids(:)
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: icount
+  PetscInt :: ivertex
+  PetscInt :: nvert
+  PetscInt :: vertex_id
+  PetscInt :: max_nvert
+  PetscBool :: found
+  PetscInt, allocatable :: temp_int(:)
+  PetscReal, allocatable :: vx(:)
+  PetscReal, allocatable :: vy(:)
+  PetscReal, allocatable :: vz(:)
+  PetscReal :: dx
+  PetscReal :: dy
+  PetscReal :: dz
+  PetscReal :: xc
+  PetscReal :: yc
+  PetscReal :: zc
+  PetscReal :: volume
+  PetscInt :: i
+  PetscInt :: j
+  PetscInt :: k
+  PetscInt :: icorner
+  PetscInt :: lwork
+  PetscReal :: radius
+  PetscReal, allocatable :: dist(:)
+  PetscReal, allocatable :: qx(:)
+  PetscReal, allocatable :: qy(:)
+  PetscReal, allocatable :: qz(:)
+  PetscReal, allocatable :: xi(:)
+  PetscReal, allocatable :: eta(:)
+
+  select case(grid%itype)
+    case(STRUCTURED_GRID, &
+         IMPLICIT_UNSTRUCTURED_GRID, &
+         EXPLICIT_UNSTRUCTURED_GRID, &
+         POLYHEDRA_UNSTRUCTURED_GRID)
+    case default
+      option%io_buffer = 'PLANAR_PATCH cell intersection is not &
+        &supported for this grid type.'
+      call PrintErrMsg(option)
+  end select
+
+  max_nvert = 8
+  if (associated(grid%unstructured_grid)) then
+    max_nvert = max(max_nvert, &
+                    grid%unstructured_grid%max_nvert_per_cell)
+    if (associated(grid%unstructured_grid%polyhedra_grid)) then
+      max_nvert = max(max_nvert,grid%unstructured_grid% &
+                      polyhedra_grid%max_nvert_per_cell)
+    endif
+  endif
+  allocate(vx(max_nvert))
+  allocate(vy(max_nvert))
+  allocate(vz(max_nvert))
+  allocate(dist(max_nvert))
+  lwork = max_nvert*max_nvert + max_nvert
+  allocate(qx(lwork))
+  allocate(qy(lwork))
+  allocate(qz(lwork))
+  allocate(xi(lwork))
+  allocate(eta(lwork))
+  allocate(temp_int(grid%nlmax))
+  temp_int = 0
+  icount = 0
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    found = PETSC_FALSE
+    select case(grid%itype)
+      case(STRUCTURED_GRID)
+        xc = grid%x(ghosted_id)
+        yc = grid%y(ghosted_id)
+        zc = grid%z(ghosted_id)
+        dx = 0.5d0*grid%structured_grid%dx(ghosted_id)
+        dy = 0.5d0*grid%structured_grid%dy(ghosted_id)
+        dz = 0.5d0*grid%structured_grid%dz(ghosted_id)
+        radius = sqrt(dx*dx+dy*dy+dz*dz)
+        if (RegionPatchCellMayHit(planar_patch,xc,yc,zc,radius)) then
+          icorner = 0
+          do k = -1, 1, 2
+            do j = -1, 1, 2
+              do i = -1, 1, 2
+                icorner = icorner + 1
+                vx(icorner) = xc + dble(i)*dx
+                vy(icorner) = yc + dble(j)*dy
+                vz(icorner) = zc + dble(k)*dz
+              enddo
+            enddo
+          enddo
+          found = RegionPatchHitsPolyhedron(planar_patch,vx,vy,vz,8, &
+                                            dist,qx,qy,qz,xi,eta,lwork)
+        endif
+      case(IMPLICIT_UNSTRUCTURED_GRID)
+        nvert = grid%unstructured_grid%cell_vertices(0,ghosted_id)
+        xc = grid%x(ghosted_id)
+        yc = grid%y(ghosted_id)
+        zc = grid%z(ghosted_id)
+        radius = 0.d0
+        do ivertex = 1, nvert
+          vertex_id = grid%unstructured_grid%cell_vertices(ivertex, &
+                                                           ghosted_id)
+          vx(ivertex) = grid%unstructured_grid%vertices(vertex_id)%x
+          vy(ivertex) = grid%unstructured_grid%vertices(vertex_id)%y
+          vz(ivertex) = grid%unstructured_grid%vertices(vertex_id)%z
+          radius = max(radius,sqrt((vx(ivertex)-xc)**2+ &
+                                   (vy(ivertex)-yc)**2+ &
+                                   (vz(ivertex)-zc)**2))
+        enddo
+        if (RegionPatchCellMayHit(planar_patch,xc,yc,zc,radius)) then
+          found = RegionPatchHitsPolyhedron(planar_patch,vx,vy,vz, &
+                                            nvert,dist,qx,qy,qz,xi, &
+                                            eta,lwork)
+        endif
+      case(POLYHEDRA_UNSTRUCTURED_GRID)
+        nvert = grid%unstructured_grid%polyhedra_grid% &
+                cell_nverts(local_id)
+        xc = grid%x(ghosted_id)
+        yc = grid%y(ghosted_id)
+        zc = grid%z(ghosted_id)
+        radius = 0.d0
+        do ivertex = 1, nvert
+          vertex_id = grid%unstructured_grid%polyhedra_grid% &
+                      cell_vertids(ivertex,local_id)
+          vx(ivertex) = grid%unstructured_grid%polyhedra_grid% &
+                        vertex_coordinates(vertex_id)%x
+          vy(ivertex) = grid%unstructured_grid%polyhedra_grid% &
+                        vertex_coordinates(vertex_id)%y
+          vz(ivertex) = grid%unstructured_grid%polyhedra_grid% &
+                        vertex_coordinates(vertex_id)%z
+          radius = max(radius,sqrt((vx(ivertex)-xc)**2+ &
+                                   (vy(ivertex)-yc)**2+ &
+                                   (vz(ivertex)-zc)**2))
+        enddo
+        if (RegionPatchCellMayHit(planar_patch,xc,yc,zc,radius)) then
+          found = RegionPatchHitsPolyhedron(planar_patch,vx,vy,vz, &
+                                            nvert,dist,qx,qy,qz,xi, &
+                                            eta,lwork)
+        endif
+      case(EXPLICIT_UNSTRUCTURED_GRID)
+        volume = grid%unstructured_grid%explicit_grid% &
+                 cell_volumes(ghosted_id)
+        found = RegionPatchHitsSphere(planar_patch, &
+                                      grid%x(ghosted_id), &
+                                      grid%y(ghosted_id), &
+                                      grid%z(ghosted_id),volume)
+    end select
+    if (found) then
+      icount = icount + 1
+      temp_int(icount) = local_id
+    endif
+  enddo
+  deallocate(vx,vy,vz)
+  deallocate(dist,qx,qy,qz,xi,eta)
+  allocate(cell_ids(icount))
+  cell_ids = temp_int(1:icount)
+  deallocate(temp_int)
+
+end subroutine GridMapCellsInPlanarPatch
 
 ! ************************************************************************** !
 
