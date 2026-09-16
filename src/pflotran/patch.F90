@@ -8449,8 +8449,8 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
             vec_ptr(local_id) = &
               patch%aux%RT%auxvars(ghosted_id)%total(isubvar,iphase) * &
               patch%aux%Material%auxvars(ghosted_id)%porosity * &
-                                                             ! mol/L -> mol/m^3
-              patch%aux%Global%auxvars(ghosted_id)%sat(iphase) * 1.d-3
+              patch%aux%Global%auxvars(ghosted_id)%sat(iphase) * &
+              1.d3 ! mol/L -> mol/m^3
           enddo
           ! add in total sorbed.  already in mol/m^3 bulk
           if (patch%reaction%nsorb > 0) then
@@ -10078,8 +10078,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
           value = &
               patch%aux%RT%auxvars(ghosted_id)%total(isubvar,iphase) * &
               patch%aux%Material%auxvars(ghosted_id)%porosity * &
-                                                              ! mol/L -> mol/m^3
-              patch%aux%Global%auxvars(ghosted_id)%sat(iphase) * 1.d-3
+              patch%aux%Global%auxvars(ghosted_id)%sat(iphase) * &
+              1.d3 ! mol/L -> mol/m^3
           ! add in total sorbed.  already in mol/m^3 bulk
           if (patch%reaction%nsorb > 0) then
             if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
