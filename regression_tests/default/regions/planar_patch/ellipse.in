@@ -1,0 +1,51 @@
+# Rotated elliptical PLANAR_PATCH (ANGLES). MATERIAL_ID=2 on the patch.
+# Regression cells: 1 = domain corner (off patch); 62/63/64/83
+# lie on the patch plane (center and in-plane samples).
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
+REGRESSION
+  CELL_IDS
+    1
+    62
+    63
+    64
+    83
+  /
+  VARIABLES
+    MATERIAL_ID
+  /
+END
+
+EXTERNAL_FILE common.txt
+
+REGION patch
+  PLANAR_PATCH
+    CENTROID 2.5 2.5 2.5
+    ANGLES 30. 20.
+    SHAPE ELLIPSE
+    RADII 1.5d0 1.d0
+    HALF_THICKNESS 0.6d0
+  /
+END
+
+STRATA
+  MATERIAL soil
+  REGION all
+END
+
+STRATA
+  MATERIAL patch
+  REGION patch
+END
+
+END_SUBSURFACE

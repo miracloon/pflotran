@@ -97,6 +97,7 @@ STANDARD_CFG = \
 	default/restart/skip/skip.cfg \
 	default/reaction_sandbox/reaction_sandbox.cfg \
 	default/regions/cell_mapping/cell_mapping.cfg \
+	default/regions/planar_patch/planar_patch.cfg \
 	default/regions/regions.cfg \
 	default/salinity/salinity.cfg \
 	default/scco2/mphase/mphase.cfg \

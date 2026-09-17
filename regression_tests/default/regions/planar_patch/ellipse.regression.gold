@@ -1,0 +1,17 @@
+-- DISCRETE: Material ID --
+      Max:         2
+      Min:         1
+     Mean:   1.2160000000000E+00
+        1:         1
+       62:         2
+       63:         2
+       64:         2
+       83:         2
+-- SOLUTION: Flow --
+   Time (seconds):   2.2335219996421E-03
+   Time Steps:            1
+   Newton Iterations:            2
+   Linear Solver Iterations:            6
+   Time Step Cuts:            0
+   Solution 2-Norm:   2.2509477470760E+06
+   Residual 2-Norm:   3.0922819860280E-11

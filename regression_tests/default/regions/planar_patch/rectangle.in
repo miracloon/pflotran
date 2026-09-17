@@ -1,0 +1,53 @@
+# Rotated rectangular PLANAR_PATCH (NORMAL+AXIS). MATERIAL_ID=2
+# on the patch. Regression cells: 1 = domain corner (off patch);
+# 63 = center; 37, 44, 82, 89 = four in-plane corner cells.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
+REGRESSION
+  CELL_IDS
+    1
+    37
+    44
+    63
+    82
+    89
+  /
+  VARIABLES
+    MATERIAL_ID
+  /
+END
+
+EXTERNAL_FILE common.txt
+
+REGION patch
+  PLANAR_PATCH
+    CENTROID 2.5 2.5 2.5
+    NORMAL 0.22630 -0.48530 -0.84456
+    AXIS 0.90631 0.42262 0.d0
+    SHAPE RECTANGLE
+    RADII 1.2d0 1.d0
+    HALF_THICKNESS 0.6d0
+  /
+END
+
+STRATA
+  MATERIAL soil
+  REGION all
+END
+
+STRATA
+  MATERIAL patch
+  REGION patch
+END
+
+END_SUBSURFACE
