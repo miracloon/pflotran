@@ -735,6 +735,9 @@ subroutine THUpdateAuxVars(realization,pm_well)
 
   call VecGetArray(field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
+  ! TH_UPDATE_FOR_ACCUM indicates call from non-perturbation
+  option%iflag = TH_UPDATE_FOR_ACCUM
+
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
 
