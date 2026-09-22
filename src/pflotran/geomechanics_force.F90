@@ -1877,6 +1877,11 @@ subroutine GeomechForceAssembleCoeffMatrix(A,geomech_realization)
     boundary_condition => boundary_condition%next
   enddo
 
+  ! rows may list the same node more than once when Dirichlet regions
+  ! overlap. That is safe only while MAT_NO_OFF_PROC_ZERO_ROWS is off.
+  ! GeomechDiscretizationCreateMatrix does not set that option. Do not
+  ! set it on this matrix without first making rows unique: PETSc's fast
+  ! path writes one slot per requested row into a buffer of length nlocal.
   call MatZeroRowsLocal(A,count,rows,1.d0,PETSC_NULL_VEC,PETSC_NULL_VEC, &
                         ierr);CHKERRQ(ierr)
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE, &

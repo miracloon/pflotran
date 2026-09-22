@@ -12976,10 +12976,12 @@ subroutine PatchCreateZeroArray(patch,dof_is_active,matrix_zeroing,option)
   PetscInt :: local_id, ghosted_id
   PetscInt :: ndof, n_active_dof
   PetscInt :: n_zero_rows
+  PetscInt :: irow
 
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: cur_coupler
   type(connection_set_type), pointer :: cur_connection_set
+  PetscBool, allocatable :: zero_row(:)
   PetscInt :: flag
 
   flag = 0
@@ -12990,14 +12992,22 @@ subroutine PatchCreateZeroArray(patch,dof_is_active,matrix_zeroing,option)
     if (dof_is_active(idof)) n_active_dof = n_active_dof + 1
   enddo
 
-  n_zero_rows = 0
+  ! Unique rows. Repeated prescribed-condition faces would otherwise
+  ! overflow MatZeroRows' local buffer (sized to the local row count).
+  allocate(zero_row(grid%nlmax*ndof))
+  zero_row = PETSC_FALSE
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) then
-      n_zero_rows = n_zero_rows + ndof
+      do idof = 1, ndof
+        zero_row((local_id-1)*ndof+idof) = PETSC_TRUE
+      enddo
     else if (n_active_dof < ndof) then
-      n_zero_rows = n_zero_rows + (ndof-n_active_dof)
+      do idof = 1, ndof
+        if (dof_is_active(idof)) cycle
+        zero_row((local_id-1)*ndof+idof) = PETSC_TRUE
+      enddo
     endif
   enddo
 
@@ -13009,9 +13019,16 @@ subroutine PatchCreateZeroArray(patch,dof_is_active,matrix_zeroing,option)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
-      n_zero_rows = n_zero_rows + ndof
+      do idof = 1, ndof
+        zero_row((local_id-1)*ndof+idof) = PETSC_TRUE
+      enddo
     enddo
     cur_coupler => cur_coupler%next
+  enddo
+
+  n_zero_rows = 0
+  do irow = 1, grid%nlmax*ndof
+    if (zero_row(irow)) n_zero_rows = n_zero_rows + 1
   enddo
 
   call MatrixZeroingAllocateArray(matrix_zeroing,n_zero_rows,option)
@@ -13020,47 +13037,18 @@ subroutine PatchCreateZeroArray(patch,dof_is_active,matrix_zeroing,option)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      do idof = 1, ndof
-        ncount = ncount + 1
-        ! 1-based indexing
-        matrix_zeroing%zero_rows_local(ncount) = (local_id-1)*ndof+idof
-        ! 0-based indexing
-        matrix_zeroing%zero_rows_local_ghosted(ncount) = &
-          (ghosted_id-1)*ndof+idof-1
-      enddo
-    else if (n_active_dof < ndof) then
-      do idof = 1, ndof
-        if (dof_is_active(idof)) cycle
-        ncount = ncount + 1
-        ! 1-based indexing
-        matrix_zeroing%zero_rows_local(ncount) = (local_id-1)*ndof+idof
-        ! 0-based indexing
-        matrix_zeroing%zero_rows_local_ghosted(ncount) = &
-          (ghosted_id-1)*ndof+idof-1
-      enddo
-    endif
+    do idof = 1, ndof
+      irow = (local_id-1)*ndof+idof
+      if (.not.zero_row(irow)) cycle
+      ncount = ncount + 1
+      ! 1-based indexing
+      matrix_zeroing%zero_rows_local(ncount) = irow
+      ! 0-based indexing
+      matrix_zeroing%zero_rows_local_ghosted(ncount) = &
+        (ghosted_id-1)*ndof+idof-1
+    enddo
   enddo
-
-  cur_coupler => patch%prescribed_condition_list%first
-  do
-   if (.not.associated(cur_coupler)) exit
-   cur_connection_set => cur_coupler%connection_set
-   do iconn = 1, cur_connection_set%num_connections
-     local_id = cur_connection_set%id_dn(iconn)
-     ghosted_id = grid%nL2G(local_id)
-     if (patch%imat(ghosted_id) <= 0) cycle
-     do idof = 1, ndof
-       ncount = ncount + 1
-       ! 1-based indexing
-       matrix_zeroing%zero_rows_local(ncount) = (local_id-1)*ndof+idof
-       ! 0-based indexing
-       matrix_zeroing%zero_rows_local_ghosted(ncount) = &
-         (ghosted_id-1)*ndof+idof-1
-     enddo
-   enddo
-   cur_coupler => cur_coupler%next
-  enddo
+  deallocate(zero_row)
 
   if (ncount /= n_zero_rows) then
     option%io_buffer = 'Error:  Mismatch in non-zero row count! ' // &
