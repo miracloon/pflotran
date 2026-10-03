@@ -470,6 +470,7 @@ subroutine PMCGeomechanicsSetAuxData(this)
   PetscInt :: imat
   PetscInt :: id_porosity_mech
   PetscInt :: id_pressure_mech
+  PetscInt :: id_temperature_mech
 
 #if GEOMECH_DEBUG
   PetscViewer :: viewer
@@ -720,6 +721,10 @@ subroutine PMCGeomechanicsSetAuxData(this)
             temp_0_id = ParameterGetIDFromName('temp_0',option)
             id_porosity_mech=ParameterGetIDFromName('stored_porosity',option)
             id_pressure_mech=ParameterGetIDFromName('stored_pressure', option)
+            if (option%iflowmode == TH_MODE) then
+              id_temperature_mech = &
+                ParameterGetIDFromName('stored_temperature',option)
+            endif
           endif
 
           do local_id = 1, grid%nlmax
@@ -793,6 +798,9 @@ subroutine PMCGeomechanicsSetAuxData(this)
 
               global_auxvar%parameters(id_pressure_mech) = &
                 local_pressure
+              if (option%iflowmode == TH_MODE) then
+                global_auxvar%parameters(id_temperature_mech) = local_temp
+              endif
             end select
           enddo
 

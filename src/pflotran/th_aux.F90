@@ -477,12 +477,12 @@ subroutine THAuxPorosity(th_auxvar,material_auxvar,global_auxvar, &
   PetscReal :: por
 
   PetscInt :: id_press_0, id_temp_0
-  PetscInt :: id_vstrain_0, id_vstrain, id_press_mech
+  PetscInt :: id_vstrain_0, id_vstrain, id_press_mech, id_temp_mech
   PetscInt :: id_porosity_mech, id_porosity_flow
   PetscInt :: mat_id
   PetscReal :: porosity_0, C1, C2, press_0, temp_0
   PetscReal :: vstrain_0, vstrain, del_vstrain, alpha
-  PetscReal :: press_mech
+  PetscReal :: press_mech, temp_mech
 
   geomech_param => th_parameter%geomech_parameter
 
@@ -530,6 +530,7 @@ subroutine THAuxPorosity(th_auxvar,material_auxvar,global_auxvar, &
               id_vstrain_0 = geomech_param%vol_strain_0_id
               id_vstrain = geomech_param%vol_strain_id
               id_press_mech = geomech_param%stored_pressure_id
+              id_temp_mech = geomech_param%stored_temperature_id
               id_porosity_mech = geomech_param%stored_porosity_id
               id_porosity_flow = geomech_param%flow_porosity_id
               alpha = geomech_param%thermal_exp_coeff(mat_id)
@@ -537,6 +538,7 @@ subroutine THAuxPorosity(th_auxvar,material_auxvar,global_auxvar, &
               press_0 = global_auxvar%parameters(id_press_0)
               press_mech = global_auxvar%parameters(id_press_mech)
               temp_0 = global_auxvar%parameters(id_temp_0)
+              temp_mech = global_auxvar%parameters(id_temp_mech)
               vstrain_0 = global_auxvar%parameters(id_vstrain_0)
               vstrain = global_auxvar%parameters(id_vstrain)
               if (option%iflag == TH_UPDATE_FOR_FIXED_ACCUM) then
@@ -549,7 +551,12 @@ subroutine THAuxPorosity(th_auxvar,material_auxvar,global_auxvar, &
                 por = porosity_0 + (biot_coeff * del_vstrain) + &
                       ( C1 * ( press_mech - press_0 )) + &
                       ( (C2 + C1) * ( th_auxvar%pres - press_mech )) + &
-                      ( alpha * (th_auxvar%temp - temp_0 ))
+                      ! thermal term from continuous strain-based law
+                      ( -3.d0*alpha*(biot_coeff - porosity_0) * &
+                        ( temp_mech - temp_0 )) + &
+                      ! thermal term for fixed-stress increment
+                      ( 3.d0*alpha*porosity_0 * &
+                        ( th_auxvar%temp - temp_mech ))
                 ! store new (mass conserved) flow porosity for threshold check
                 global_auxvar%parameters(id_porosity_flow) = por
 
@@ -558,7 +565,7 @@ subroutine THAuxPorosity(th_auxvar,material_auxvar,global_auxvar, &
                 th_auxvar%dpor_dp = (biot_coeff**2)/dr_bulk_modulus + &
                     ((biot_coeff-porosity_0)*(1.d0-biot_coeff)) / &
                     dr_bulk_modulus
-                th_auxvar%dpor_dT = alpha
+                th_auxvar%dpor_dT = 3.d0*alpha*porosity_0
               endif
           end select
       end select

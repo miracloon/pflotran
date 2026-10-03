@@ -184,6 +184,10 @@ subroutine GeomechForceSetupPatch(geomech_realization)
             ParameterGetIDFromName('vol_strain',option)
           geomech_parameter%stored_pressure_id = &
             ParameterGetIDFromName('stored_pressure',option)
+          if (option%iflowmode == TH_MODE) then
+            geomech_parameter%stored_temperature_id = &
+              ParameterGetIDFromName('stored_temperature',option)
+          endif
           geomech_parameter%stored_porosity_id = &
             ParameterGetIDFromName('stored_porosity',option)
           geomech_parameter%flow_porosity_id = &

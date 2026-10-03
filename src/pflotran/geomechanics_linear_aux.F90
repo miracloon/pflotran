@@ -22,6 +22,7 @@ module Geomechanics_Linear_Aux_module
     PetscInt :: vol_strain_0_id
     PetscInt :: vol_strain_id
     PetscInt :: stored_pressure_id
+    PetscInt :: stored_temperature_id
     PetscInt :: stored_porosity_id
     PetscInt :: flow_porosity_id
 
@@ -70,6 +71,7 @@ function GeomechLinearAuxCreate()
   linear_parameter%vol_strain_0_id = UNINITIALIZED_INTEGER
   linear_parameter%vol_strain_id = UNINITIALIZED_INTEGER
   linear_parameter%stored_pressure_id = UNINITIALIZED_INTEGER
+  linear_parameter%stored_temperature_id = UNINITIALIZED_INTEGER
   linear_parameter%stored_porosity_id = UNINITIALIZED_INTEGER
   linear_parameter%flow_porosity_id = UNINITIALIZED_INTEGER
   nullify(linear_parameter%youngs_modulus)

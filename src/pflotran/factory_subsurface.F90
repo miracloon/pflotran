@@ -417,6 +417,10 @@ subroutine FactorySubsurfaceInitSimulation(simulation)
                                             'stored_porosity')
           call RealizationRegisterParameter(realization, &
                                             'stored_pressure')
+          if (option%iflowmode == TH_MODE) then
+            call RealizationRegisterParameter(realization, &
+                                              'stored_temperature')
+          endif
     end select
   end select
 
