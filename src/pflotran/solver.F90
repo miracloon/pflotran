@@ -238,6 +238,17 @@ subroutine SolverSetKSPOptions(solver, option)
   ! KSPSetFromOptions must come after custom setup in order to override
   ! from command line
   call KSPSetFromOptions(solver%ksp,ierr);CHKERRQ(ierr)
+
+  ! Update the solver%pc_type and solver%ksp_type fields after the
+  ! KSPSetFromOptions(), as the PC and KSP types may have been changed via
+  ! the options database. SolverSetSNESOptions() does this, but not all
+  ! PFLOTRAN modes use SNES!
+  ! Not doing this step can result in the SolverSetupPCShiftAndPivoting() call
+  ! failing when it tries to set a shift for a preconditioner that does not
+  ! support this operation.
+  call PCGetType(solver%pc,solver%pc_type,ierr);CHKERRQ(ierr)
+  call KSPGetType(solver%ksp,solver%ksp_type,ierr);CHKERRQ(ierr)
+
   call SolverSetupPCShiftAndPivoting(solver,option)
   call KSPGetTolerances(solver%ksp,solver%linear_rtol,solver%linear_atol, &
                         solver%linear_dtol,solver%linear_max_iterations, &
