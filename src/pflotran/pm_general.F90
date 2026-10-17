@@ -368,7 +368,7 @@ subroutine PMGeneralReadSimOptionsBlock(this,input)
         call InputErrorMsg(input,option,keyword,error_string)
       case('GAS_COMPONENT_FORMULA_WEIGHT')
         !geh: assuming gas component is index 2
-        call InputReadDouble(input,option,fmw_comp(2))
+        call InputReadDouble(input,option,gen_fmw_comp(2))
         call InputErrorMsg(input,option,keyword,error_string)
       case('GAS_STATE_AIR_MASS_DOF')
         call InputReadCard(input,option,word)
@@ -397,7 +397,7 @@ subroutine PMGeneralReadSimOptionsBlock(this,input)
         non_darcy_B = tempreal
       case('LIQUID_COMPONENT_FORMULA_WEIGHT')
         !heeho: assuming liquid component is index 1
-        call InputReadDouble(input,option,fmw_comp(1))
+        call InputReadDouble(input,option,gen_fmw_comp(1))
         call InputErrorMsg(input,option,keyword,error_string)
       case('NO_AIR')
         general_no_air = PETSC_TRUE
@@ -693,7 +693,10 @@ subroutine PMGeneralSetup(this)
   ! Date: 04/11/24
 
   use General_module
+  use General_Aux_module, only : gen_fmw_comp
   use Material_module
+  use EOS_Gas_module
+  use EOS_module
 
   implicit none
 
@@ -703,7 +706,10 @@ subroutine PMGeneralSetup(this)
   PetscInt :: i
   PetscBool, pointer :: bool_array(:)
 
+  call EOSGasSetFMW(gen_fmw_comp(2))
   call this%SetRealization()
+  call EOSGasTableProcess(this%realization%option)
+  call EOSReferenceDensity(this%realization%option)
   call MaterialSetupThermal( &
          this%realization%patch%aux%Material%material_parameter, &
          this%realization%patch%material_property_array, &

@@ -275,7 +275,7 @@ subroutine PMWIPPFloReadSimOptionsBlock(this,input)
 
     select case(trim(keyword))
       case('GAS_COMPONENT_FORMULA_WEIGHT')
-        call InputReadDouble(input,option,fmw_comp(2))
+        call InputReadDouble(input,option,wipp_fmw_comp(2))
         call InputErrorMsg(input,option,keyword,error_string)
       case('NO_FRACTURE')
         wippflo_use_fracture = PETSC_FALSE
@@ -657,12 +657,18 @@ subroutine PMWIPPFloSetup(this)
   ! Date: 04/11/24
 
   use WIPP_Flow_module
+  use WIPP_Flow_Aux_module, only : wipp_fmw_comp
+  use EOS_Gas_module
+  use EOS_module
 
   implicit none
 
   class(pm_wippflo_type) :: this
 
+  call EOSGasSetFMW(wipp_fmw_comp(2))
   call this%SetRealization()
+  call EOSGasTableProcess(this%realization%option)
+  call EOSReferenceDensity(this%realization%option)
   call WIPPFloSetup(this%realization)
   if (associated(this%pmwss_ptr)) call this%pmwss_ptr%Setup()
   call PMSubsurfaceFlowSetup(this)
@@ -1986,7 +1992,7 @@ subroutine PMWIPPFloCheckConvergence(this,snes,it,xnorm,unorm, &
     bragflo_residual = r_p(liquid_equation_index:gas_equation_index)
     bragflo_accum = accum_tpdt_p(liquid_equation_index:gas_equation_index)
     if (.not.wippflo_use_bragflo_units) then
-      pflotran_to_bragflo = fmw_comp * option%flow_dt / &
+      pflotran_to_bragflo = wipp_fmw_comp * option%flow_dt / &
                             material_auxvars(ghosted_id)%volume
       bragflo_residual = bragflo_residual * pflotran_to_bragflo
       bragflo_accum = bragflo_accum * pflotran_to_bragflo

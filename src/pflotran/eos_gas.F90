@@ -12,8 +12,8 @@ module EOS_Gas_module
   private
 
   ! module variables
-  PetscReal :: fmw_gas           !kg/Kmol
-  PetscReal :: constant_density  !kmol/m^3
+  PetscReal :: fmw_gas           !kg/kmol; NaN until EOSGasSetFMW
+  PetscReal :: constant_density  !kg/m^3
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
   PetscReal :: constant_henry
@@ -184,8 +184,7 @@ module EOS_Gas_module
             EOSGasSetDensityRKS, &
             EOSGasSetDensityPRMethane, &
             EOSGasSetEnergyIdealMethane, &
-            EOSGasSetFMWConstant, &
-            EOSGasGetFMW, &
+            EOSGasSetFMW, &
             EOSGasSetDensityConstant, &
             EOSGasSetEnergyConstant, &
             EOSGasSetViscosityConstant, &
@@ -205,9 +204,11 @@ module EOS_Gas_module
 
 subroutine EOSGasInit()
 
+  use, intrinsic :: ieee_arithmetic
+
   implicit none
 
-  fmw_gas = FMWAIR
+  fmw_gas = ieee_value(fmw_gas,ieee_quiet_nan)
   constant_density = UNINITIALIZED_DOUBLE
   constant_viscosity = UNINITIALIZED_DOUBLE
   constant_enthalpy = UNINITIALIZED_DOUBLE
@@ -402,27 +403,15 @@ end subroutine EOSGasSetEnergyIdealMethane
 
 ! ************************************************************************** !
 
-subroutine EOSGasSetFMWConstant(input_fmw_gas)
+subroutine EOSGasSetFMW(fmw)
 
   implicit none
 
-  PetscReal, intent(in) :: input_fmw_gas
+  PetscReal, intent(in) :: fmw
 
-  fmw_gas = input_fmw_gas
+  fmw_gas = fmw
 
-end subroutine EOSGasSetFMWConstant
-
-! ************************************************************************** !
-
-function EOSGasGetFMW()
-
-  implicit none
-
-  PetscReal :: EOSGasGetFMW
-
-  EOSGasGetFMW = fmw_gas
-
-end function EOSGasGetFMW
+end subroutine EOSGasSetFMW
 
 ! ************************************************************************** !
 
@@ -456,7 +445,7 @@ subroutine EOSGasSetDensityConstant(density_kg)
 
   PetscReal, intent(in) :: density_kg
 
-  constant_density = density_kg / fmw_gas
+  constant_density = density_kg
   EOSGasDensityEnergyPtr => EOSGasDensityEnergyGeneral
   EOSGasDensityPtr => EOSGasDensityConstant
 
@@ -1467,10 +1456,8 @@ subroutine EOSGasDensityEOSDBase(T, P, Rho_gas, dRho_dT, dRho_dP, ierr, &
   ierr = 0
   call eos_dbase%EOSPropGrad(T,P,EOS_DENSITY,Rho_gas,dRho_dT,dRho_dP,ierr)
 
-  !PO todo: conversion when loaidng database to do this operation only once
-           ! conversion to molar density
-           ! kg/m3 * kmol/kg  = kmol/m3
-  Rho_gas = Rho_gas / fmw_gas ! kmol/m^3
+  ! Database density is mass density [kg/m^3]. Convert to kmol/m^3.
+  Rho_gas = Rho_gas / fmw_gas
   dRho_dT = dRho_dT / fmw_gas
   dRho_dP = dRho_dP / fmw_gas
 
@@ -1635,14 +1622,12 @@ subroutine EOSGasEnergyEOSDBase(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   call eos_dbase%EOSPropGrad(T,P,EOS_ENTHALPY,H,dH_dT,dH_dP,ierr)
   call eos_dbase%EOSPropGrad(T,P,EOS_INTERNAL_ENERGY,U,dU_dT,dU_dP,ierr)
 
-  !PO todo: conversion when loading database to do this operation only once
-  ! conversion to molar energy
-  ! J/kg * kg/Kmol = J/Kmol
-  H = H  * fmw_gas
+  ! Database energy is per unit mass [J/kg]. Convert to J/kmol.
+  H = H * fmw_gas
   dH_dT = dH_dT * fmw_gas
   dH_dP = dH_dP * fmw_gas
 
-  U = U  * fmw_gas
+  U = U * fmw_gas
   dU_dT = dU_dT * fmw_gas
   dU_dP = dU_dP * fmw_gas
 
@@ -1663,7 +1648,7 @@ subroutine EOSGasDensityConstant(T,P,Rho_gas,dRho_dT,dRho_dP,ierr,table_idxs)
   PetscInt, pointer, optional, intent(inout) :: table_idxs(:)
 
   ierr = 0
-  Rho_gas = constant_density ! kmol/m^3
+  Rho_gas = constant_density / fmw_gas
 
   dRho_dT = 0.d0
   dRho_dP = 0.d0
@@ -2000,8 +1985,9 @@ subroutine EOSGasTableProcess(option)
   if (.not.associated(pvt_table)) return
 
   select case(pvt_table%name)
-  case("PVDG")
-      call pvt_table%ConvertFVFtoMolarDensity(fmw_gas,surface_density_kg)
+    case("PVDG")
+      call pvt_table%ConvertFVFtoMolarDensity(fmw_gas, &
+                                              surface_density_kg)
   end select
 
 end subroutine EOSGasTableProcess
@@ -2028,7 +2014,7 @@ subroutine EOSGasInputRecord()
   if (associated(EOSGasDensityEnergyPtr,EOSGasDensityEnergyGeneral) .and. &
       associated(EOSGasDensityPtr,EOSGasDensityConstant)) then
     write(id,'(a29)',advance='no') 'gas density: '
-    write(word1,*) constant_density * fmw_gas
+    write(word1,*) constant_density
     write(id,'(a)') 'constant, ' // adjustl(trim(word1)) // ' kg/m^3'
   endif
   if (associated(EOSGasDensityEnergyPtr,EOSGasDensityEnergyGeneral) .and. &

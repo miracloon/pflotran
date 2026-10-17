@@ -543,12 +543,12 @@ subroutine WIPPFloFluxLumpedHarmonic(wippflo_auxvar_up,global_auxvar_up, &
   Res(wat_comp_id) = Res(wat_comp_id) + wat_mole_flux
   if (debug_connection) then
 !    write(*,'("liq-t1X: ",9es12.4)') &
-!      perm_rho_mu_area_ave_over_dist(iphase)*fmw_comp(iphase)* &
+!      perm_rho_mu_area_ave_over_dist(iphase)*wipp_fmw_comp(iphase)* &
 !      (dist_up+dist_dn)/area!, &
-!      wippflo_auxvar_up%den(iphase)*fmw_comp(iphase), &
+!      wippflo_auxvar_up%den(iphase)*wipp_fmw_comp(iphase), &
 !      wippflo_auxvar_up%mu(iphase), perm_up, &
 !      wippflo_auxvar_up%alpha, &
-!      wippflo_auxvar_dn%den(iphase)*fmw_comp(iphase), &
+!      wippflo_auxvar_dn%den(iphase)*wipp_fmw_comp(iphase), &
 !      wippflo_auxvar_dn%mu(iphase), perm_dn, &
 !      wippflo_auxvar_dn%alpha
     write(*,'(9x,"a1l-up/dn: ",8es12.4)') &
@@ -557,7 +557,7 @@ subroutine WIPPFloFluxLumpedHarmonic(wippflo_auxvar_up,global_auxvar_up, &
       1.d0/(dist(0)*material_auxvar_up%volume/area), &
       1.d0/(dist(0)*material_auxvar_dn%volume/area)
     write(*,'(9x,"liq-up,t1l,dp,t2l: ",l1,x,8es12.4)') upwind, &
-      perm_rho_mu_area_ave_over_dist(iphase)*fmw_comp(iphase)* &
+      perm_rho_mu_area_ave_over_dist(iphase)*wipp_fmw_comp(iphase)* &
       (dist_up+dist_dn)/area, &
       delta_pressure, &
       rel_perm!, &
@@ -604,7 +604,7 @@ subroutine WIPPFloFluxLumpedHarmonic(wippflo_auxvar_up,global_auxvar_up, &
   Res(air_comp_id) = Res(air_comp_id) + air_mole_flux
   if (debug_connection) then
     write(*,'(9x,"gas-up,t1l,dp,t2l: ",l1,x,8es12.4)') upwind, &
-      perm_rho_mu_area_ave_over_dist(iphase)*fmw_comp(iphase)* &
+      perm_rho_mu_area_ave_over_dist(iphase)*wipp_fmw_comp(iphase)* &
       (dist_up+dist_dn)/area, &
       delta_pressure, &
       rel_perm!, &
@@ -1265,9 +1265,10 @@ subroutine WIPPFloSrcSink(option,qsrc,flow_src_sink_type, &
   dden_bool = 0.d0
   select case(flow_src_sink_type)
     case(MASS_RATE_SS)
-      qsrc_mol = qsrc(wat_comp_id)/fmw_comp(wat_comp_id) ! kg/sec -> kmol/sec
+      ! kg/sec -> kmol/sec
+      qsrc_mol = qsrc(wat_comp_id)/wipp_fmw_comp(wat_comp_id)
     case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
-      qsrc_mol = qsrc(wat_comp_id)/fmw_comp(wat_comp_id)*scale
+      qsrc_mol = qsrc(wat_comp_id)/wipp_fmw_comp(wat_comp_id)*scale
     case(VOLUMETRIC_RATE_SS)  ! assume local density for now
       ! qsrc1 = m^3/sec
       qsrc_mol = qsrc(wat_comp_id)*wippflo_auxvar%den(wat_comp_id) ! den = kmol/m^3
@@ -1285,9 +1286,10 @@ subroutine WIPPFloSrcSink(option,qsrc,flow_src_sink_type, &
   dden_bool = 0.d0
   select case(flow_src_sink_type)
     case(MASS_RATE_SS)
-      qsrc_mol = qsrc(air_comp_id)/fmw_comp(air_comp_id) ! kg/sec -> kmol/sec
+      ! kg/sec -> kmol/sec
+      qsrc_mol = qsrc(air_comp_id)/wipp_fmw_comp(air_comp_id)
     case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
-      qsrc_mol = qsrc(air_comp_id)/fmw_comp(air_comp_id)*scale
+      qsrc_mol = qsrc(air_comp_id)/wipp_fmw_comp(air_comp_id)*scale
     case(VOLUMETRIC_RATE_SS)  ! assume local density for now
       ! qsrc1 = m^3/sec
       qsrc_mol = qsrc(air_comp_id)*wippflo_auxvar%den(air_comp_id) ! den = kmol/m^3

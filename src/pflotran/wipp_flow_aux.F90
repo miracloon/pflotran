@@ -55,7 +55,7 @@ module WIPP_Flow_Aux_module
   PetscInt, public :: wippflo_ts_count
 
   !TODO(geh): hardwire gas to H2
-  PetscReal, public :: fmw_comp(2) = [FMWH2O,2.01588d0]
+  PetscReal, public :: wipp_fmw_comp(2) = [FMWH2O,2.01588d0]
 
   PetscInt, parameter, public :: WIPPFLO_LIQUID_PRESSURE_DOF = 1
   PetscInt, parameter, public :: WIPPFLO_GAS_SATURATION_DOF = 2
@@ -509,7 +509,7 @@ subroutine WIPPFloAuxVarCompute(x,wippflo_auxvar,global_auxvar, &
   den_water_vapor = 0.d0
   den_kg_water_vapor = 0.d0
   wippflo_auxvar%den(gid) = den_water_vapor + den_air
-  wippflo_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*fmw_comp(gid)
+  wippflo_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*wipp_fmw_comp(gid)
   den_water_vapor = 0.d0
 
   ! Liquid Phase
@@ -1045,7 +1045,7 @@ subroutine WIPPFloConvertUnitsToBRAGFloRes(Res,material_auxvar,option)
   type(material_auxvar_type) :: material_auxvar
 
   if (wippflo_use_bragflo_units) then
-    Res = Res * fmw_comp * option%flow_dt / material_auxvar%volume
+    Res = Res * wipp_fmw_comp * option%flow_dt / material_auxvar%volume
   endif
 
 end subroutine WIPPFloConvertUnitsToBRAGFloRes
@@ -1073,7 +1073,7 @@ subroutine WIPPFloConvertUnitsToBRAGFloJac(Jac,material_auxvar,option)
 
   if (wippflo_use_bragflo_units) then
     do irow = 1, option%nflowdof
-      Jac(irow,:) = Jac(irow,:) * fmw_comp(irow) * option%flow_dt / &
+      Jac(irow,:) = Jac(irow,:) * wipp_fmw_comp(irow) * option%flow_dt / &
         material_auxvar%volume
     enddo
   endif

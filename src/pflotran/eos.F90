@@ -554,14 +554,7 @@ subroutine EOSRead(input,option)
                               test_uniform_temp, test_uniform_pres, &
                               test_filename)
             endif
-          case('FORMULA_WEIGHT')
-            call InputReadDouble(input,option,tempreal)
-            call InputErrorMsg(input,option,'VALUE','EOS,GAS,FORMULA_WEIGHT')
-            call InputReadAndConvertUnits(input,tempreal, &
-                             'g/mol','EOS,GAS,FORMULA_WEIGHT',option)
-            call EOSGasSetFMWConstant(tempreal)
           case('CO2_SPAN_WAGNER_DB')
-            call EOSGasSetFMWConstant(FMWCO2)
             temparray = UNINITIALIZED_DOUBLE
             subkeyword =''
             call InputPushBlock(input,option)
@@ -640,7 +633,6 @@ subroutine EOSRead(input,option)
           case('PVDG')
             call EOSGasSetPVDG(input,option)
           case('CO2_DATABASE')
-            call EOSGasSetFMWConstant(FMWCO2)
             call InputReadFilename(input,option,string)
             call InputErrorMsg(input,option,'EOS,GAS','DATABASE filename')
             call EOSGasSetEOSDBase(string,option)
@@ -657,12 +649,6 @@ subroutine EOSRead(input,option)
           option%io_buffer =  trim(string) // ': ' // trim(option%io_buffer)
         endif
         call PrintMsg(option)
-      !else if (ierr == 6) then
-      !  option%io_buffer = 'set as default value for gas fmw'
-      !  if (len_trim(string) > 1) then
-      !    option%io_buffer =  trim(string) // ': ' // trim(option%io_buffer)
-      !  endif
-      !  call PrintMsg(option)
       else if (InputError(ierr)) then
         option%io_buffer = 'Error in Gas EOS'
         if (len_trim(string) > 1) then
@@ -722,8 +708,11 @@ subroutine EOSReferenceDensity(option)
           call EOSGasDensity(option%flow%reference_temperature, &
                      option%flow%reference_pressure-vapor_saturation_pressure, &
                              air_density_kmol,ierr)
-          option%flow%reference_density(option%gas_phase) = &
-            vapor_density_kg + air_density_kmol*FMWAIR
+          ! fmw_gas is NaN until EOSGasSetFMW. Do not store that result.
+          if (air_density_kmol == air_density_kmol) then
+            option%flow%reference_density(option%gas_phase) = &
+              vapor_density_kg + air_density_kmol*FMWAIR
+          endif
         endif
       endif
   end select
@@ -746,7 +735,8 @@ subroutine EOSProcess(option)
   type(option_type) :: option
 
   call EOSWaterTableProcess(option)
-  call EOSGasTableProcess(option)
+  ! Gas PVDG conversion uses fmw_gas. Multiphase flow Setup assigns that
+  ! weight and then calls EOSGasTableProcess.
   call EOSTableProcessList(option)
 
 end subroutine EOSProcess

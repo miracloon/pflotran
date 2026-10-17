@@ -326,7 +326,7 @@ subroutine WIPPFloComputeMassBalance(realization,mass_balance)
       ! mass = volume_phase*density
       mass_balance(iphase) = mass_balance(iphase) + &
         wippflo_auxvars(ZERO_INTEGER,ghosted_id)%den(iphase)* &
-        fmw_comp(iphase)*vol_phase
+        wipp_fmw_comp(iphase)*vol_phase
     enddo
   enddo
 
@@ -411,7 +411,7 @@ subroutine WIPPFloUpdateMassBalance(realization)
       global_auxvars_bc(iconn)%mass_balance(icomp,:) = &
         global_auxvars_bc(iconn)%mass_balance(icomp,:) + &
         global_auxvars_bc(iconn)%mass_balance_delta(icomp,:)* &
-        fmw_comp(icomp)*option%flow_dt
+        wipp_fmw_comp(icomp)*option%flow_dt
     enddo
   enddo
   do iconn = 1, patch%aux%WIPPFlo%num_aux_ss
@@ -419,7 +419,7 @@ subroutine WIPPFloUpdateMassBalance(realization)
       global_auxvars_ss(iconn)%mass_balance(icomp,:) = &
         global_auxvars_ss(iconn)%mass_balance(icomp,:) + &
         global_auxvars_ss(iconn)%mass_balance_delta(icomp,:)* &
-        fmw_comp(icomp)*option%flow_dt
+        wipp_fmw_comp(icomp)*option%flow_dt
     enddo
   enddo
 

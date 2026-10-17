@@ -2024,11 +2024,11 @@ subroutine OutputCommonMapFlowFormulaWeight(option,flow_dof_scale)
   ! Author: Glenn Hammond
   ! Date: 12/04/25
   !
-  use General_Aux_module, only : general_fmw => fmw_comp
+  use General_Aux_module, only : general_fmw => gen_fmw_comp
   use Option_module, only : option_type
   use Richards_Aux_module, only : richards_density_kmol_to_kg
-  use SCO2_Aux_module, only : sco2_fmw => fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => fmw_comp
+  use SCO2_Aux_module, only : sco2_fmw => sco2_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
 
   implicit none
 

@@ -176,13 +176,18 @@ subroutine PMMphaseSetup(this)
   use Material_module
   use Mphase_module
   use Mphase_Aux_module
+  use EOS_Gas_module
+  use EOS_module
   use co2_sw_module, only : init_span_wagner
 
   implicit none
 
   class(pm_mphase_type) :: this
 
+  call EOSGasSetFMW(FMWCO2)
   call this%SetRealization()
+  call EOSGasTableProcess(this%realization%option)
+  call EOSReferenceDensity(this%realization%option)
   call MaterialSetupThermal( &
          this%realization%patch%aux%Material%material_parameter, &
          this%realization%patch%material_property_array, &

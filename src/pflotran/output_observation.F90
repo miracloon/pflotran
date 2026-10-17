@@ -2018,9 +2018,9 @@ subroutine OutputIntegralFlux(realization_base)
   use Integral_Flux_module
   use Utility_module
   use Immiscible_Aux_module, only : immis_fmw
-  use General_Aux_module, only : general_fmw => fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => fmw_comp
-  use SCO2_Aux_module, only : sco2_fmw => fmw_comp
+  use General_Aux_module, only : general_fmw => gen_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
+  use SCO2_Aux_module, only : sco2_fmw => sco2_fmw_comp
   use Richards_Aux_module, only : richards_density_kmol_to_kg
 
   implicit none
@@ -2343,8 +2343,8 @@ subroutine OutputMassBalance(realization_base)
   use Reaction_Aux_module
   use NW_Transport_Aux_module
   use Material_Aux_module
-  use General_Aux_module, only : general_fmw => fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => fmw_comp
+  use General_Aux_module, only : general_fmw => gen_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
   use Richards_Aux_module, only : richards_density_kmol_to_kg
 
   implicit none

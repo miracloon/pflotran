@@ -2226,6 +2226,8 @@ pm_general.o : \
   checkpoint.o \
   convergence.o \
   debug.o \
+  eos.o \
+  eos_gas.o \
   field.o \
   general.o \
   general_aux.o \
@@ -2274,6 +2276,7 @@ pm_hydrate.o : \
   characteristic_curves_common.o \
   checkpoint.o \
   convergence.o \
+  eos.o \
   eos_gas.o \
   field.o \
   fluid.o \
@@ -2303,6 +2306,8 @@ pm_immiscible.o : \
   checkpoint.o \
   convergence.o \
   debug.o \
+  eos.o \
+  eos_gas.o \
   eos_water.o \
   field.o \
   global.o \
@@ -2361,6 +2366,8 @@ pm_mphase.o : \
   co2_sw.o \
   connection.o \
   coupler.o \
+  eos.o \
+  eos_gas.o \
   eos_water.o \
   global_aux.o \
   grid.o \
@@ -2555,6 +2562,8 @@ pm_sco2.o : \
   checkpoint.o \
   co2_sw.o \
   convergence.o \
+  eos.o \
+  eos_gas.o \
   field.o \
   global.o \
   global_aux.o \
@@ -2827,6 +2836,8 @@ pm_wipp_flow.o : \
   dataset_common_hdf5.o \
   debug.o \
   discretization.o \
+  eos.o \
+  eos_gas.o \
   field.o \
   global.o \
   global_aux.o \
@@ -4182,7 +4193,6 @@ thc.o : \
   coupler.o \
   debug.o \
   discretization.o \
-  eos_water.o \
   field.o \
   fluid.o \
   global_aux.o \

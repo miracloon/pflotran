@@ -475,8 +475,8 @@ subroutine SSSandboxOutput(sandbox_list,option,output_option)
 
   use Option_module
   use Output_Aux_module
-  use General_Aux_module, only : general_fmw => fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => fmw_comp
+  use General_Aux_module, only : general_fmw => gen_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
   use Richards_Aux_module, only : richards_density_kmol_to_kg
 
   implicit none

@@ -610,13 +610,19 @@ subroutine PMSCO2Setup(this)
 
   use Material_module
   use SCO2_module
+  use SCO2_Aux_module, only : sco2_fmw_comp
+  use EOS_Gas_module
+  use EOS_module
   use co2_sw_module, only : init_span_wagner
 
   implicit none
 
   class(pm_sco2_type) :: this
 
+  call EOSGasSetFMW(sco2_fmw_comp(2))
   call this%SetRealization()
+  call EOSGasTableProcess(this%realization%option)
+  call EOSReferenceDensity(this%realization%option)
   call MaterialSetupThermal( &
          this%realization%patch%aux%Material%material_parameter, &
          this%realization%patch%material_property_array, &

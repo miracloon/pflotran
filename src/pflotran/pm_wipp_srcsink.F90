@@ -3623,9 +3623,9 @@ end subroutine PMWSSUpdateChemSpecies
           print *, '  SALTCONV:', 1.d0/(1.d0 - 1.d-2*this%salt_wtpercent)
           print *, '     QR(B):', this%srcsink_brine(k,p), ' [kmol/sec]'
           print *, '     QR(G):', this%srcsink_gas(k,p), ' [kmol/sec]'
-          print *, '     QR(B):', this%srcsink_brine(k,p)*fmw_comp(1) / &
+          print *, '     QR(B):', this%srcsink_brine(k,p)*wipp_fmw_comp(1) / &
                    material_auxvars(ghosted_id)%volume, ' [kg/m^3-sec]'
-          print *, '     QR(G):', this%srcsink_gas(k,p)*fmw_comp(2) / &
+          print *, '     QR(G):', this%srcsink_gas(k,p)*wipp_fmw_comp(2) / &
                    material_auxvars(ghosted_id)%volume, ' [kg/m^3-sec]'
           print *
         endif

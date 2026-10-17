@@ -8549,7 +8549,7 @@ subroutine PMWellSolveFlowHydrostatic(this,perturbation_index,ierr)
   use Grid_module
   use EOS_Water_module
   use EOS_Gas_module
-  use SCO2_Aux_module, only : fmw_comp, SCO2BrineDensity
+  use SCO2_Aux_module, only : sco2_fmw_comp, SCO2BrineDensity
   use Hydrate_Aux_module, only : hydrate_fmw_comp
 
   implicit none
@@ -8602,7 +8602,7 @@ subroutine PMWellSolveFlowHydrostatic(this,perturbation_index,ierr)
 
   select case (option%iflowmode)
     case (SCO2_MODE)
-      fmw_comp_temp(:) = fmw_comp(:)
+      fmw_comp_temp(:) = sco2_fmw_comp(:)
     case (H_MODE)
       fmw_comp_temp(:) = hydrate_fmw_comp(:)
     case (RICHARDS_MODE)
@@ -9269,25 +9269,25 @@ subroutine PMWellUpdatePropertiesSCO2Flow(pm_well,well,option)
                           xco2g, xwg, xco2l, xsl, xwl, &
                           xmolco2g, xmolwg, xmolco2l, xmolsl, xmolwl, option)
 
-      xmolco2g = (well%gas%xmass(i,co2_id)/fmw_comp(2)) / &
-                ((well%gas%xmass(i,co2_id)/fmw_comp(2)) + &
-                  (well%gas%xmass(i,wid)/fmw_comp(1)))
+      xmolco2g = (well%gas%xmass(i,co2_id)/sco2_fmw_comp(2)) / &
+                ((well%gas%xmass(i,co2_id)/sco2_fmw_comp(2)) + &
+                  (well%gas%xmass(i,wid)/sco2_fmw_comp(1)))
       xmolwg = 1.d0 - xmolco2g
-      xmolco2l = (well%liq%xmass(i,co2_id)/fmw_comp(2)) / &
-                ((well%gas%xmass(i,co2_id)/fmw_comp(2)) + &
-                (well%gas%xmass(i,wid)/fmw_comp(1)) + &
-                (well%gas%xmass(i,sid)/fmw_comp(3)))
-      xmolwl = (well%liq%xmass(i,wid)/fmw_comp(2)) / &
-                ((well%gas%xmass(i,co2_id)/fmw_comp(2)) + &
-                (well%gas%xmass(i,wid)/fmw_comp(1)) + &
-                (well%gas%xmass(i,sid)/fmw_comp(3)))
+      xmolco2l = (well%liq%xmass(i,co2_id)/sco2_fmw_comp(2)) / &
+                ((well%gas%xmass(i,co2_id)/sco2_fmw_comp(2)) + &
+                (well%gas%xmass(i,wid)/sco2_fmw_comp(1)) + &
+                (well%gas%xmass(i,sid)/sco2_fmw_comp(3)))
+      xmolwl = (well%liq%xmass(i,wid)/sco2_fmw_comp(2)) / &
+                ((well%gas%xmass(i,co2_id)/sco2_fmw_comp(2)) + &
+                (well%gas%xmass(i,wid)/sco2_fmw_comp(1)) + &
+                (well%gas%xmass(i,sid)/sco2_fmw_comp(3)))
       xmolsl = 1.d0 - xmolco2l - xmolwl
 
       !Gas Density
       Pva = max(well%pg(i),Prvap)
       call EOSGasDensity(well%temp(i),Pva, &
                         den_mol_co2,drho_dT,drho_dP,ierr)
-      den_kg_co2 = den_mol_co2 * fmw_comp(2)
+      den_kg_co2 = den_mol_co2 * sco2_fmw_comp(2)
       den_kg_gas = well%gas%xmass(i,option%co2_id) * &
                   den_kg_co2 + &
                   well%gas%xmass(i,option%water_id) * &
@@ -9319,14 +9319,14 @@ subroutine PMWellUpdatePropertiesSCO2Flow(pm_well,well,option)
         call EOSWaterEnthalpy(well%temp(i),well%pg(i), &
                               well%liq%H(i),ierr)
         ! J/kmol --> J/kg
-        well%liq%H(i) = well%liq%H(i) / fmw_comp(wid)
+        well%liq%H(i) = well%liq%H(i) / sco2_fmw_comp(wid)
         call SCO2BrineEnthalpy(well%temp(i), well%liq%xmass(i,sid), &
                               well%liq%H(i),H_temp)
         ! CO2 density, internal energy, enthalpy
         call EOSGasDensityEnergy(well%temp(i),well%pg(i),den_co2, &
                                 well%gas%H(i),U_temp,ierr)
         ! J/kmol --> J/kg
-        well%gas%H(i) = well%gas%H(i) / fmw_comp(co2_id)
+        well%gas%H(i) = well%gas%H(i) / sco2_fmw_comp(co2_id)
 
         ! Liquid phase enthalpy
         well%liq%H(i) = SCO2EnthalpyCompositeLiquid(well%temp(i), &
@@ -9342,7 +9342,7 @@ subroutine PMWellUpdatePropertiesSCO2Flow(pm_well,well,option)
                                           den_steam, &
                                           H_steam,ierr)
         ! J/kmol -> MJ/kg
-        H_steam = H_steam / fmw_comp(wid) * 1.d-6
+        H_steam = H_steam / sco2_fmw_comp(wid) * 1.d-6
       else
         den_steam = 0.d0
         H_steam = 0.d0

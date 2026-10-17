@@ -109,7 +109,7 @@ subroutine SCO2Accumulation(sco2_auxvar,global_auxvar,material_auxvar, &
           ! Water and CO2 source/sinks from reaction.
           Res(icomp) = Res(icomp) + material_auxvar%volume * &
                       global_auxvar%reaction_rate(icomp) * 1.d-3 * &
-                      fmw_comp(icomp)
+                      sco2_fmw_comp(icomp)
         enddo
     end select
   endif
@@ -433,13 +433,13 @@ subroutine SCO2Flux(sco2_auxvar_up,global_auxvar_up, &
       salt_diff_flux = dsalt_mass_flux_ddeltaX * delta_xmass
 
       if (iphase == ONE_INTEGER) then
-          water_mass_flux = -1.d0 * fmw_comp(1) * &
-                        (co2_mole_flux  + salt_diff_flux / fmw_comp(3))
+          water_mass_flux = -1.d0 * sco2_fmw_comp(1) * &
+                        (co2_mole_flux  + salt_diff_flux / sco2_fmw_comp(3))
       else
-          water_mass_flux = -1.d0 * fmw_comp(1) * co2_mole_flux
+          water_mass_flux = -1.d0 * sco2_fmw_comp(1) * co2_mole_flux
       endif
 
-      co2_mass_flux = co2_mole_flux * fmw_comp(2)
+      co2_mass_flux = co2_mole_flux * sco2_fmw_comp(2)
 
       ! Diffusive Contributions
       Res(SCO2_WATER_EQUATION_INDEX) = Res(SCO2_WATER_EQUATION_INDEX) + &
@@ -501,7 +501,7 @@ subroutine SCO2Flux(sco2_auxvar_up,global_auxvar_up, &
       !               sco2_auxvar_dn%xmol(sid,option%liquid_phase) * den_dn)
 
 
-      ! water_mass_flux = -1.d0 * fmw_comp(1) * &
+      ! water_mass_flux = -1.d0 * sco2_fmw_comp(1) * &
       !                   (co2_mole_flux + salt_mole_flux)
 
     enddo
@@ -833,12 +833,13 @@ subroutine SCO2Flux(sco2_auxvar_up,global_auxvar_up, &
                               area
     salt_mass_flux = dtot_mass_flux_ddeltaX * delta_X_whatever
 
-    tot_mole_flux = (co2_mole_flux + salt_mass_flux / fmw_comp(THREE_INTEGER))
+    tot_mole_flux = (co2_mole_flux + salt_mass_flux / &
+                     sco2_fmw_comp(THREE_INTEGER))
 
     Res(SCO2_WATER_EQUATION_INDEX) = Res(SCO2_WATER_EQUATION_INDEX) - &
-                                     tot_mole_flux * fmw_comp(ONE_INTEGER)
+                                     tot_mole_flux * sco2_fmw_comp(ONE_INTEGER)
     Res(SCO2_CO2_EQUATION_INDEX) = Res(SCO2_CO2_EQUATION_INDEX) + &
-                                     co2_mole_flux * fmw_comp(TWO_INTEGER)
+                                     co2_mole_flux * sco2_fmw_comp(TWO_INTEGER)
     Res(SCO2_SALT_EQUATION_INDEX) = Res(SCO2_SALT_EQUATION_INDEX) + &
                                      salt_mass_flux
     endif
@@ -915,9 +916,11 @@ subroutine SCO2Flux(sco2_auxvar_up,global_auxvar_up, &
       dtot_mole_flux_ddiffusion_coef = tot_mole_flux / diffusion_scale
       dtot_mole_flux_ddenave = tot_mole_flux / density_ave
       Res(SCO2_WATER_EQUATION_INDEX) = Res(SCO2_WATER_EQUATION_INDEX) - &
-                                       tot_mole_flux * fmw_comp(ONE_INTEGER)
+                                       tot_mole_flux * &
+                                       sco2_fmw_comp(ONE_INTEGER)
       Res(SCO2_CO2_EQUATION_INDEX) = Res(SCO2_CO2_EQUATION_INDEX) + &
-                                       tot_mole_flux * fmw_comp(TWO_INTEGER)
+                                       tot_mole_flux * &
+                                       sco2_fmw_comp(TWO_INTEGER)
     endif
 
     if (sco2_thermal) then
@@ -1346,13 +1349,13 @@ subroutine SCO2BCFlux(ibndtype, auxvar_mapping, auxvars, sco2_auxvar_up, &
       salt_diff_flux = dsalt_mass_flux_ddeltaX * delta_xmass
 
         if (iphase == LIQUID_PHASE) then
-            water_mass_flux = -1.d0 * fmw_comp(1) * &
-                    (co2_mole_flux + salt_diff_flux / fmw_comp(3))
+            water_mass_flux = -1.d0 * sco2_fmw_comp(1) * &
+                    (co2_mole_flux + salt_diff_flux / sco2_fmw_comp(3))
         else
-            water_mass_flux = -1.d0 * fmw_comp(1) * co2_mole_flux
+            water_mass_flux = -1.d0 * sco2_fmw_comp(1) * co2_mole_flux
         endif
 
-        co2_mass_flux = fmw_comp(2) * co2_mole_flux
+        co2_mass_flux = sco2_fmw_comp(2) * co2_mole_flux
 
         Res(SCO2_WATER_EQUATION_INDEX) = Res(SCO2_WATER_EQUATION_INDEX) + &
                                         water_mass_flux
@@ -1827,12 +1830,13 @@ subroutine SCO2BCFlux(ibndtype, auxvar_mapping, auxvars, sco2_auxvar_up, &
       salt_mass_flux = dtot_mass_flux_ddeltaX * delta_X_whatever
 
       tot_mole_flux = (co2_mole_flux + salt_mass_flux / &
-                       fmw_comp(THREE_INTEGER))
+                       sco2_fmw_comp(THREE_INTEGER))
 
       Res(SCO2_WATER_EQUATION_INDEX) = Res(SCO2_WATER_EQUATION_INDEX) - &
-                                        tot_mole_flux * fmw_comp(ONE_INTEGER)
+                                        tot_mole_flux * &
+                                        sco2_fmw_comp(ONE_INTEGER)
       Res(SCO2_CO2_EQUATION_INDEX) = Res(SCO2_CO2_EQUATION_INDEX) + &
-                                      co2_mole_flux * fmw_comp(TWO_INTEGER)
+                                      co2_mole_flux * sco2_fmw_comp(TWO_INTEGER)
       Res(SCO2_SALT_EQUATION_INDEX) = Res(SCO2_SALT_EQUATION_INDEX) + &
                                       salt_mass_flux
     endif
@@ -1892,9 +1896,11 @@ subroutine SCO2BCFlux(ibndtype, auxvar_mapping, auxvars, sco2_auxvar_up, &
       dtot_mole_flux_ddiffusion_coef = tot_mole_flux / diffusion_scale
       dtot_mole_flux_ddenave = tot_mole_flux / density_ave
       Res(SCO2_WATER_EQUATION_INDEX) = Res(SCO2_WATER_EQUATION_INDEX) - &
-                                        tot_mole_flux * fmw_comp(ONE_INTEGER)
+                                        tot_mole_flux * &
+                                        sco2_fmw_comp(ONE_INTEGER)
       Res(SCO2_CO2_EQUATION_INDEX) = Res(SCO2_CO2_EQUATION_INDEX) + &
-                                        tot_mole_flux * fmw_comp(TWO_INTEGER)
+                                        tot_mole_flux * &
+                                        sco2_fmw_comp(TWO_INTEGER)
     endif
 
     if (sco2_thermal) then

@@ -328,12 +328,17 @@ subroutine PMImmiscibleSetup(this)
   ! Date: 05/17/24
 
   use Immiscible_module
+  use EOS_Gas_module
+  use EOS_module
 
   implicit none
 
   class(pm_immiscible_type) :: this
 
+  call EOSGasSetFMW(immis_fmw(2))
   call this%SetRealization()
+  call EOSGasTableProcess(this%realization%option)
+  call EOSReferenceDensity(this%realization%option)
   call ImmiscibleSetup(this%realization)
   call PMSubsurfaceFlowSetup(this)
 

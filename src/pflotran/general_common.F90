@@ -601,14 +601,14 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     if (analytical_derivatives) then
       ddelta_pressure_dpup = 1.d0 + dist_gravity * &
                              ddensity_kg_ave_dden_kg_up * &
-                             gen_auxvar_up%d%denl_pl * fmw_comp(iphase)
+                             gen_auxvar_up%d%denl_pl * gen_fmw_comp(iphase)
       ddelta_pressure_dpdn = -1.d0 + dist_gravity * &
                              ddensity_kg_ave_dden_kg_dn * &
-                             gen_auxvar_dn%d%denl_pl * fmw_comp(iphase)
+                             gen_auxvar_dn%d%denl_pl * gen_fmw_comp(iphase)
       ddelta_pressure_dTup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                             gen_auxvar_up%d%denl_T * fmw_comp(iphase)
+                             gen_auxvar_up%d%denl_T * gen_fmw_comp(iphase)
       ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                             gen_auxvar_dn%d%denl_T * fmw_comp(iphase)
+                             gen_auxvar_dn%d%denl_T * gen_fmw_comp(iphase)
     endif
     up_scale = 0.d0
     dn_scale = 0.d0
@@ -1061,18 +1061,18 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     if (analytical_derivatives) then
       ddelta_pressure_dpup = 1.d0 + dist_gravity * &
                              ddensity_kg_ave_dden_kg_up * &
-                             gen_auxvar_up%d%deng_pg * fmw_comp(iphase)
+                             gen_auxvar_up%d%deng_pg * gen_fmw_comp(iphase)
       ddelta_pressure_dpdn = -1.d0 + dist_gravity * &
                              ddensity_kg_ave_dden_kg_dn * &
-                             gen_auxvar_dn%d%deng_pg * fmw_comp(iphase)
+                             gen_auxvar_dn%d%deng_pg * gen_fmw_comp(iphase)
       ddelta_pressure_dpaup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                              gen_auxvar_up%d%deng_pa * fmw_comp(iphase)
+                              gen_auxvar_up%d%deng_pa * gen_fmw_comp(iphase)
       ddelta_pressure_dpadn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                              gen_auxvar_dn%d%deng_pa * fmw_comp(iphase)
+                              gen_auxvar_dn%d%deng_pa * gen_fmw_comp(iphase)
       ddelta_pressure_dTup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                             gen_auxvar_up%d%deng_T * fmw_comp(iphase)
+                             gen_auxvar_up%d%deng_T * gen_fmw_comp(iphase)
       ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                             gen_auxvar_dn%d%deng_T * fmw_comp(iphase)
+                             gen_auxvar_dn%d%deng_T * gen_fmw_comp(iphase)
     endif
     up_scale = 0.d0
     dn_scale = 0.d0
@@ -1597,12 +1597,18 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     else ! delta of mass fraction
       xmol_air_up = gen_auxvar_up%xmol(air_comp_id,iphase)
       xmol_air_dn = gen_auxvar_dn%xmol(air_comp_id,iphase)
-      tempreal = (xmol_air_up*fmw_comp(2) + (1.d0-xmol_air_up)*fmw_comp(1))
-      xmass_air_up = xmol_air_up*fmw_comp(2) / tempreal
-      dxmass_air_up_dxmol_air_up = (fmw_comp(2) - xmass_air_up * (fmw_comp(2) - fmw_comp(1))) / tempreal
-      tempreal = (xmol_air_dn*fmw_comp(2) + (1.d0-xmol_air_dn)*fmw_comp(1))
-      xmass_air_dn = xmol_air_dn*fmw_comp(2) / tempreal
-      dxmass_air_dn_dxmol_air_dn = (fmw_comp(2) - xmass_air_dn * (fmw_comp(2) - fmw_comp(1))) / tempreal
+      tempreal = (xmol_air_up*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_up)*gen_fmw_comp(1))
+      xmass_air_up = xmol_air_up*gen_fmw_comp(2) / tempreal
+      dxmass_air_up_dxmol_air_up = (gen_fmw_comp(2) - &
+                                   xmass_air_up * (gen_fmw_comp(2) - &
+                                   gen_fmw_comp(1))) / tempreal
+      tempreal = (xmol_air_dn*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_dn)*gen_fmw_comp(1))
+      xmass_air_dn = xmol_air_dn*gen_fmw_comp(2) / tempreal
+      dxmass_air_dn_dxmol_air_dn = (gen_fmw_comp(2) - &
+                                   xmass_air_dn * (gen_fmw_comp(2) - &
+                                   gen_fmw_comp(1))) / tempreal
       delta_xmass = xmass_air_up - xmass_air_dn
       delta_X_whatever = delta_xmass
       delta_X_whatever_dxmolup = 1.d0 * dxmass_air_up_dxmol_air_up
@@ -1998,12 +2004,18 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     else ! delta of mass fraction
       xmol_air_up = gen_auxvar_up%xmol(air_comp_id,iphase)
       xmol_air_dn = gen_auxvar_dn%xmol(air_comp_id,iphase)
-      tempreal = (xmol_air_up*fmw_comp(2) + (1.d0-xmol_air_up)*fmw_comp(1))
-      xmass_air_up = xmol_air_up*fmw_comp(2) / tempreal
-      dxmass_air_up_dxmol_air_up = (fmw_comp(2) - xmass_air_up * (fmw_comp(2) - fmw_comp(1))) / tempreal
-      tempreal = (xmol_air_dn*fmw_comp(2) + (1.d0-xmol_air_dn)*fmw_comp(1))
-      xmass_air_dn = xmol_air_dn*fmw_comp(2) / tempreal
-      dxmass_air_dn_dxmol_air_dn = (fmw_comp(2) - xmass_air_dn * (fmw_comp(2) - fmw_comp(1))) / tempreal
+      tempreal = (xmol_air_up*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_up)*gen_fmw_comp(1))
+      xmass_air_up = xmol_air_up*gen_fmw_comp(2) / tempreal
+      dxmass_air_up_dxmol_air_up = (gen_fmw_comp(2) - &
+                                   xmass_air_up * (gen_fmw_comp(2) - &
+                                   gen_fmw_comp(1))) / tempreal
+      tempreal = (xmol_air_dn*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_dn)*gen_fmw_comp(1))
+      xmass_air_dn = xmol_air_dn*gen_fmw_comp(2) / tempreal
+      dxmass_air_dn_dxmol_air_dn = (gen_fmw_comp(2) - &
+                                   xmass_air_dn * (gen_fmw_comp(2) - &
+                                   gen_fmw_comp(1))) / tempreal
       delta_xmass = xmass_air_up - xmass_air_dn
       delta_X_whatever = delta_xmass
       delta_X_whatever_dxmolup = 1.d0 * dxmass_air_up_dxmol_air_up
@@ -2704,9 +2716,9 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         if (analytical_derivatives) then
           ddelta_pressure_dpdn = -1.d0 + dist_gravity * &
                                  ddensity_kg_ave_dden_kg_dn * &
-                                 gen_auxvar_dn%d%denl_pl * fmw_comp(iphase)
+                                 gen_auxvar_dn%d%denl_pl * gen_fmw_comp(iphase)
           ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                                 gen_auxvar_dn%d%denl_T * fmw_comp(iphase)
+                                 gen_auxvar_dn%d%denl_T * gen_fmw_comp(iphase)
         endif
         if (bc_type == HYDROSTATIC_SEEPAGE_BC .or. &
             bc_type == HYDROSTATIC_CONDUCTANCE_BC) then
@@ -3067,12 +3079,12 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                           gravity_term
         if (analytical_derivatives) then
           ddelta_pressure_dpadn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                                  gen_auxvar_dn%d%deng_pa * fmw_comp(iphase)
+                                  gen_auxvar_dn%d%deng_pa * gen_fmw_comp(iphase)
           ddelta_pressure_dpdn = -1.d0 + dist_gravity * &
                                  ddensity_kg_ave_dden_kg_dn * &
-                                 gen_auxvar_dn%d%deng_pg * fmw_comp(iphase)
+                                 gen_auxvar_dn%d%deng_pg * gen_fmw_comp(iphase)
           ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                                 gen_auxvar_dn%d%deng_T * fmw_comp(iphase)
+                                 gen_auxvar_dn%d%deng_T * gen_fmw_comp(iphase)
         endif
         dn_scale = 0.d0
         ! don't expect the derivative to match precisely at delta_pressure = 0
@@ -3445,12 +3457,15 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       endif
       xmol_air_up = gen_auxvar_up%xmol(air_comp_id,iphase)
       xmol_air_dn = gen_auxvar_dn%xmol(air_comp_id,iphase)
-      tempreal = (xmol_air_up*fmw_comp(2) + (1.d0-xmol_air_up)*fmw_comp(1))
-      xmass_air_up = xmol_air_up*fmw_comp(2) / tempreal
-      tempreal = (xmol_air_dn*fmw_comp(2) + (1.d0-xmol_air_dn)*fmw_comp(1))
-      xmass_air_dn = xmol_air_dn*fmw_comp(2) / tempreal
-      dxmass_air_dn_dxmol_air_dn = (fmw_comp(2) - xmass_air_dn * (fmw_comp(2) &
-                                    - fmw_comp(1))) / tempreal
+      tempreal = (xmol_air_up*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_up)*gen_fmw_comp(1))
+      xmass_air_up = xmol_air_up*gen_fmw_comp(2) / tempreal
+      tempreal = (xmol_air_dn*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_dn)*gen_fmw_comp(1))
+      xmass_air_dn = xmol_air_dn*gen_fmw_comp(2) / tempreal
+      dxmass_air_dn_dxmol_air_dn = (gen_fmw_comp(2) - &
+                                   xmass_air_dn * (gen_fmw_comp(2) - &
+                                   gen_fmw_comp(1))) / tempreal
       delta_xmass = xmass_air_up - xmass_air_dn
       delta_X_whatever = delta_xmass
       delta_X_whatever_dxmoldn = -1.d0 * dxmass_air_dn_dxmol_air_dn
@@ -3685,10 +3700,12 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
     else ! delta of mass fraction
       xmol_air_up = gen_auxvar_up%xmol(air_comp_id,iphase)
       xmol_air_dn = gen_auxvar_dn%xmol(air_comp_id,iphase)
-      tempreal = (xmol_air_up*fmw_comp(2) + (1.d0-xmol_air_up)*fmw_comp(1))
-      xmass_air_up = xmol_air_up*fmw_comp(2) / tempreal
-      tempreal = (xmol_air_dn*fmw_comp(2) + (1.d0-xmol_air_dn)*fmw_comp(1))
-      xmass_air_dn = xmol_air_dn*fmw_comp(2) / tempreal
+      tempreal = (xmol_air_up*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_up)*gen_fmw_comp(1))
+      xmass_air_up = xmol_air_up*gen_fmw_comp(2) / tempreal
+      tempreal = (xmol_air_dn*gen_fmw_comp(2) + &
+                  (1.d0-xmol_air_dn)*gen_fmw_comp(1))
+      xmass_air_dn = xmol_air_dn*gen_fmw_comp(2) / tempreal
       delta_xmass = xmass_air_up - xmass_air_dn
       delta_X_whatever = delta_xmass
       delta_X_whatever_dxmoldn = -1.d0 * dxmass_air_dn_dxmol_air_dn
@@ -4289,9 +4306,10 @@ subroutine GeneralAuxVarComputeAndSrcSink(option,qsrc,flow_src_sink_type, &
   dden_bool = 0.d0
   select case(flow_src_sink_type)
     case(MASS_RATE_SS)
-      qsrc_mol = qsrc(wat_comp_id)/fmw_comp(wat_comp_id) ! kg/sec -> kmol/sec
+      ! kg/sec -> kmol/sec
+      qsrc_mol = qsrc(wat_comp_id)/gen_fmw_comp(wat_comp_id)
     case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
-      qsrc_mol = qsrc(wat_comp_id)/fmw_comp(wat_comp_id)*scale
+      qsrc_mol = qsrc(wat_comp_id)/gen_fmw_comp(wat_comp_id)*scale
     case(VOLUMETRIC_RATE_SS)  ! assume local density for now
       ! qsrc1 = m^3/sec
       ! den = kmol/m^3
@@ -4344,9 +4362,10 @@ subroutine GeneralAuxVarComputeAndSrcSink(option,qsrc,flow_src_sink_type, &
   dden_bool = 0.d0
   select case(flow_src_sink_type)
     case(MASS_RATE_SS)
-      qsrc_mol = qsrc(air_comp_id)/fmw_comp(air_comp_id) ! kg/sec -> kmol/sec
+      ! kg/sec -> kmol/sec
+      qsrc_mol = qsrc(air_comp_id)/gen_fmw_comp(air_comp_id)
     case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
-      qsrc_mol = qsrc(air_comp_id)/fmw_comp(air_comp_id)*scale
+      qsrc_mol = qsrc(air_comp_id)/gen_fmw_comp(air_comp_id)*scale
     case(VOLUMETRIC_RATE_SS)  ! assume local density for now
       ! qsrc1 = m^3/sec
       ! den = kmol/m^3
@@ -4444,9 +4463,10 @@ subroutine GeneralAuxVarComputeAndSrcSink(option,qsrc,flow_src_sink_type, &
     dden_bool = 0.d0
     select case(flow_src_sink_type)
       case(MASS_RATE_SS)
-        qsrc_mol = qsrc(salt_comp_id)/fmw_comp(salt_comp_id) ! kg/sec -> kmol/sec
+        ! kg/sec -> kmol/sec
+        qsrc_mol = qsrc(salt_comp_id)/gen_fmw_comp(salt_comp_id)
       case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
-        qsrc_mol = qsrc(salt_comp_id)/fmw_comp(salt_comp_id)*scale
+        qsrc_mol = qsrc(salt_comp_id)/gen_fmw_comp(salt_comp_id)*scale
       case(VOLUMETRIC_RATE_SS)  ! assume local density for now
         ! qsrc1 = m^3/sec
         ! den = kmol/m^3
@@ -5299,7 +5319,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dsatg = 0.d0
             ddenl = general_auxvar%d%denl_T
             ddeng = general_auxvar%d%deng_T
-            ddenlkg = ddenl*fmw_comp(1)
+            ddenlkg = ddenl*gen_fmw_comp(1)
             ddengkg = general_auxvar%d%dengkg_T
             dUl = general_auxvar%d%Ul_T
             dHl = general_auxvar%d%Hl_T
@@ -5381,7 +5401,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dHc = general_auxvar%d%Hc_p
             ddenl = general_auxvar%d%denl_pl*dpl
             ddeng = general_auxvar%d%deng_pg
-            ddenlkg = ddenl*fmw_comp(1)
+            ddenlkg = ddenl*gen_fmw_comp(1)
             ddengkg = general_auxvar%d%dengkg_pg
             dUl = general_auxvar%d%Ul_pl
             dHl = general_auxvar%d%Hl_pl
@@ -5425,7 +5445,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dsatg = 0.d0
             ddenl = general_auxvar%d%denl_T
             ddeng = general_auxvar%d%deng_T
-            ddenlkg = ddenl*fmw_comp(1)
+            ddenlkg = ddenl*gen_fmw_comp(1)
             ddengkg = general_auxvar%d%dengkg_T
             dUl = general_auxvar%d%Ul_T
             dHl = general_auxvar%d%Hl_T
@@ -5649,7 +5669,9 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
   write(*,100) '          gas saturation: ', (general_auxvar_pert%sat(gid)-general_auxvar%sat(gid))/pert,dsatg
   write(*,100) '   liquid density [kmol]: ', (general_auxvar_pert%den(lid)-general_auxvar%den(lid))/pert,ddenl
   write(*,100) '      gas density [kmol]: ', (general_auxvar_pert%den(gid)-general_auxvar%den(gid))/pert,ddeng
-  write(*,100) '     liquid density [kg]: ', (general_auxvar_pert%den_kg(lid)-general_auxvar%den_kg(lid))/pert,ddenl*fmw_comp(1)
+  write(*,100) '     liquid density [kg]: ', &
+    (general_auxvar_pert%den_kg(lid)- &
+     general_auxvar%den_kg(lid))/pert,ddenl*gen_fmw_comp(1)
   write(*,100) '        gas density [kg]: ', (general_auxvar_pert%den_kg(gid)-general_auxvar%den_kg(gid))/pert,ddengkg
   write(*,100) '         temperature [C]: ', (general_auxvar_pert%temp-general_auxvar%temp)/pert
   write(*,100) '      liquid H [MJ/kmol]: ', (general_auxvar_pert%H(lid)-general_auxvar%H(lid))/pert,dHl

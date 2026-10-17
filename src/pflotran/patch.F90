@@ -6931,14 +6931,14 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
   use Reaction_module
   use Reactive_Transport_Aux_module
   use Reaction_Surface_Complexation_Aux_module
-  use General_Aux_module, only : general_fmw => fmw_comp, &
+  use General_Aux_module, only : general_fmw => gen_fmw_comp, &
                                  GEN_GAS_STATE, GEN_LIQUID_STATE
   use Hydrate_Aux_module, only : hydrate_fmw => hydrate_fmw_comp, &
                                  G_STATE, L_STATE
   use WIPP_Flow_Aux_module, only : WIPPFloScalePerm
   use ZFlow_Aux_module
   use THC_Aux_module
-  use SCO2_Aux_module, only : sco2_fmw => fmw_comp, &
+  use SCO2_Aux_module, only : sco2_fmw => sco2_fmw_comp, &
                               SCO2_LIQUID_STATE, SCO2_GAS_STATE
   use Immiscible_Aux_module
   use Output_Aux_module
@@ -9163,7 +9163,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
   use Output_Aux_module
   use ERT_Aux_module
   use Variables_module
-  use General_Aux_module, only : general_fmw => fmw_comp, &
+  use General_Aux_module, only : general_fmw => gen_fmw_comp, &
                                  GEN_GAS_STATE, GEN_LIQUID_STATE
   use Hydrate_Aux_module, only : hydrate_fmw => hydrate_fmw_comp, &
                                  G_STATE, L_STATE

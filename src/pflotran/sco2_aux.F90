@@ -11,7 +11,8 @@ module SCO2_Aux_module
 
   ! Physical Properties
   ! MAN: change FMWNACL and density to generic salt?
-  PetscReal, parameter, public :: fmw_comp(3) = [18.015d0,44.01d0,58.4428d0]
+  PetscReal, parameter, public :: sco2_fmw_comp(3) = &
+    [18.015d0,44.01d0,58.4428d0]
   PetscReal, parameter, public :: SALT_DENSITY_KG = 2.170D3 !kg/m^3
   PetscReal, parameter, public :: SALT_THERMAL_CONDUCTIVITY = 6.d0 !W/m-K
   PetscReal, parameter :: CO2_REFERENCE_SURFACE_TENSION = 0.072d0 ! N/m
@@ -842,7 +843,7 @@ subroutine SCO2AuxVarUpdateState(x, sco2_auxvar, global_auxvar, &
         ! Compute what gas saturation would be
         call EOSGasDensity(sco2_auxvar%temp,Pco2, &
                      den_mol,drho_dT,drho_dP,ierr)
-        den_co2 = den_mol * fmw_comp(2)
+        den_co2 = den_mol * sco2_fmw_comp(2)
         call SCO2BrineDensity(sco2_auxvar%temp,cell_pressure, &
                              xsl, den_brine, option)
         call SCO2DensityCompositeLiquid(sco2_auxvar%temp, &
@@ -1238,7 +1239,7 @@ subroutine SCO2AuxVarCompute(x,sco2_auxvar,global_auxvar,material_auxvar, &
 
   ! Precipitate Phase has constant pure salt properties
   sco2_auxvar%den_kg(pid) = SALT_DENSITY_KG
-  sco2_auxvar%den(pid) = sco2_auxvar%den_kg(pid) / fmw_comp(3)
+  sco2_auxvar%den(pid) = sco2_auxvar%den_kg(pid) / sco2_fmw_comp(3)
   sco2_auxvar%xmass(wid,pid) = 0.d0
   sco2_auxvar%xmass(co2_id,pid) = 0.d0
   sco2_auxvar%xmass(sid,pid) = 1.d0
@@ -1346,15 +1347,15 @@ subroutine SCO2AuxVarCompute(x,sco2_auxvar,global_auxvar,material_auxvar, &
       sco2_auxvar%xmass(co2_id,gid) = 1.d0
 
       ! Update the liquid mole fractions
-      mw_mix = 1.d0 / (sco2_auxvar%xmass(wid,lid)/fmw_comp(1) + &
-               sco2_auxvar%xmass(co2_id,lid)/fmw_comp(2) + &
-               sco2_auxvar%xmass(sid,lid)/fmw_comp(3))
+      mw_mix = 1.d0 / (sco2_auxvar%xmass(wid,lid)/sco2_fmw_comp(1) + &
+               sco2_auxvar%xmass(co2_id,lid)/sco2_fmw_comp(2) + &
+               sco2_auxvar%xmass(sid,lid)/sco2_fmw_comp(3))
       sco2_auxvar%xmol(wid,lid) = sco2_auxvar%xmass(wid,lid)* &
-                                  mw_mix/fmw_comp(1)
+                                  mw_mix/sco2_fmw_comp(1)
       sco2_auxvar%xmol(co2_id,lid) = sco2_auxvar%xmass(co2_id,lid)* &
-                                     mw_mix/fmw_comp(2)
+                                     mw_mix/sco2_fmw_comp(2)
       sco2_auxvar%xmol(sid,lid) = sco2_auxvar%xmass(sid,lid)* &
-                                  mw_mix/fmw_comp(3)
+                                  mw_mix/sco2_fmw_comp(3)
 
     case (SCO2_GAS_STATE)
       ! Fully unsaturated system with or without trapped gas.
@@ -1630,7 +1631,7 @@ subroutine SCO2AuxVarCompute(x,sco2_auxvar,global_auxvar,material_auxvar, &
   ! Gas phase density
   call EOSGasDensity(sco2_auxvar%temp,pva, &
                      den_mol,drho_dT,drho_dP,ierr)
-  sco2_auxvar%den_kg(co2_pressure_id) = den_mol * fmw_comp(2)
+  sco2_auxvar%den_kg(co2_pressure_id) = den_mol * sco2_fmw_comp(2)
   sco2_auxvar%den_kg(gid) = sco2_auxvar%xmass(co2_id,gid) * &
                             sco2_auxvar%den_kg(co2_pressure_id) + &
                             sco2_auxvar%xmass(wid,gid) * &
@@ -1713,15 +1714,15 @@ subroutine SCO2AuxVarCompute(x,sco2_auxvar,global_auxvar,material_auxvar, &
                                dkrg_dsatl,option)
 
   ! Convert to molar density: liquid
-  mw_mix = sco2_auxvar%xmol(wid,lid) * fmw_comp(1) + &
-          sco2_auxvar%xmol(co2_id,lid) * fmw_comp(2) + &
-          sco2_auxvar%xmol(sid,lid) * fmw_comp(3)
+  mw_mix = sco2_auxvar%xmol(wid,lid) * sco2_fmw_comp(1) + &
+          sco2_auxvar%xmol(co2_id,lid) * sco2_fmw_comp(2) + &
+          sco2_auxvar%xmol(sid,lid) * sco2_fmw_comp(3)
   sco2_auxvar%den(lid) = sco2_auxvar%den_kg(lid) / mw_mix
 
   ! Convert to molar density: gas
-  mw_mix = sco2_auxvar%xmol(wid,gid) * fmw_comp(1) + &
-          sco2_auxvar%xmol(co2_id,gid) * fmw_comp(2) + &
-          sco2_auxvar%xmol(sid,gid) * fmw_comp(3)
+  mw_mix = sco2_auxvar%xmol(wid,gid) * sco2_fmw_comp(1) + &
+          sco2_auxvar%xmol(co2_id,gid) * sco2_fmw_comp(2) + &
+          sco2_auxvar%xmol(sid,gid) * sco2_fmw_comp(3)
   sco2_auxvar%den(gid) = sco2_auxvar%den_kg(gid) / mw_mix
 
   ! Tortuosity
@@ -1776,7 +1777,7 @@ subroutine SCO2AuxVarCompute(x,sco2_auxvar,global_auxvar,material_auxvar, &
     call EOSWaterEnthalpy(sco2_auxvar%temp,cell_pressure, &
                           sco2_auxvar%H(pwid),ierr)
     ! J/kmol --> J/kg
-    sco2_auxvar%H(pwid) = sco2_auxvar%H(pwid) / fmw_comp(wid)
+    sco2_auxvar%H(pwid) = sco2_auxvar%H(pwid) / sco2_fmw_comp(wid)
     call SCO2BrineEnthalpy(sco2_auxvar%temp, sco2_auxvar%xmass(sid,lid), &
                            sco2_auxvar%H(pwid),sco2_auxvar%H(pbid))
     ! CO2 density, internal energy, enthalpy
@@ -1784,8 +1785,8 @@ subroutine SCO2AuxVarCompute(x,sco2_auxvar,global_auxvar,material_auxvar, &
                              pres(co2_pressure_id),den_co2, &
                              sco2_auxvar%H(pgid),sco2_auxvar%U(pgid),ierr)
     ! J/kmol --> J/kg
-    sco2_auxvar%H(pgid) = sco2_auxvar%H(pgid) / fmw_comp(co2_id)
-    sco2_auxvar%U(pgid) = sco2_auxvar%U(pgid) / fmw_comp(co2_id)
+    sco2_auxvar%H(pgid) = sco2_auxvar%H(pgid) / sco2_fmw_comp(co2_id)
+    sco2_auxvar%U(pgid) = sco2_auxvar%U(pgid) / sco2_fmw_comp(co2_id)
 
     ! Liquid phase enthalpy
     sco2_auxvar%H(lid) = SCO2EnthalpyCompositeLiquid(sco2_auxvar%temp, &
@@ -1818,7 +1819,7 @@ subroutine SCO2AuxVarCompute(x,sco2_auxvar,global_auxvar,material_auxvar, &
                                       den_steam, &
                                       H_steam,ierr)
       ! J/kmol -> MJ/kg
-      H_steam = H_steam / fmw_comp(wid) * 1.d-6
+      H_steam = H_steam / sco2_fmw_comp(wid) * 1.d-6
       U_steam = H_steam - sco2_auxvar%pres(vpid) / den_steam_kg
     else
       den_steam = 0.d0
@@ -1873,20 +1874,20 @@ subroutine SCO2VaporPressureBrine(T,P_sat,Pc,rho_kg,x_salt,P_vap,extended)
   PetscReal :: T_k, mw_mix
 
   T_k = T + T273K ! K
-  mw_mix = x_salt*fmw_comp(3) + (1.d0-x_salt)*fmw_comp(1)
+  mw_mix = x_salt*sco2_fmw_comp(3) + (1.d0-x_salt)*sco2_fmw_comp(1)
 
   if (Pc > epsilon) then
     if (sco2_vap_pres_lowering_pc_exp > UNINITIALIZED_DOUBLE) then
       P_vap = P_sat * &
-              exp(-1.d0 *fmw_comp(1) * &
+              exp(-1.d0 *sco2_fmw_comp(1) * &
                   (Pc ** sco2_vap_pres_lowering_pc_exp) / &
                   (rho_kg * IDEAL_GAS_CONSTANT * 1.d3 * T_k))
     else
       if (extended) then
-        P_vap = P_sat * exp(-1.d0 *fmw_comp(1) * Pc / &
+        P_vap = P_sat * exp(-1.d0 *sco2_fmw_comp(1) * Pc / &
                 (rho_kg * IDEAL_GAS_CONSTANT * 1.d3 * T_k))
       else
-        P_vap = P_sat * exp(-1.d0 *fmw_comp(1) * (Pc ** 1.25d0) / &
+        P_vap = P_sat * exp(-1.d0 *sco2_fmw_comp(1) * (Pc ** 1.25d0) / &
                 (rho_kg * IDEAL_GAS_CONSTANT * 1.d3 * T_k))
       endif
     endif
@@ -2027,10 +2028,10 @@ subroutine SCO2Equilibrate(T,P,p_co2,p_vap,p_sat,p_vap_brine, &
   cl_param = clmb(1)*T_k + clmb(2)/T_k + clmb(3)/(T_k**2)
 
   ! Nacl mass fraction to molality
-  xmolsl = 1.d3*(xsl/(1.d0-xsl))/fmw_comp(3)
+  xmolsl = 1.d3*(xsl/(1.d0-xsl))/sco2_fmw_comp(3)
   xmol_na = xmolsl
   xmol_cl = xmolsl
-  xmolwl = 1.d3 / fmw_comp(1)
+  xmolwl = 1.d3 / sco2_fmw_comp(1)
   xmolsl = xmolsl / (xmolsl + xmolwl)
   apc = (1.d0 + (xmol_na + xmol_cl)/xmolwl)*exp(2.d0*cl_param*xmol_na + &
          nacl_param*xmol_cl*xmol_na)
@@ -2188,16 +2189,17 @@ subroutine SCO2Equilibrate(T,P,p_co2,p_vap,p_sat,p_vap_brine, &
 
   ! Mass Fractions
 
-  fmw_gas = xmolwg * fmw_comp(1) + xmolco2g * fmw_comp(2)
-  fmw_liq = xmolwl * fmw_comp(1) + xmolco2l * fmw_comp(2) + xmolsl * fmw_comp(3)
+  fmw_gas = xmolwg * sco2_fmw_comp(1) + xmolco2g * sco2_fmw_comp(2)
+  fmw_liq = xmolwl * sco2_fmw_comp(1) + xmolco2l * sco2_fmw_comp(2) + &
+            xmolsl * sco2_fmw_comp(3)
 
   ! Gas Phase
-  xwg = xmolwg * fmw_comp(1)/fmw_gas
-  xco2g = xmolco2g * fmw_comp(2)/fmw_gas
+  xwg = xmolwg * sco2_fmw_comp(1)/fmw_gas
+  xco2g = xmolco2g * sco2_fmw_comp(2)/fmw_gas
   ! Liquid Phase
-  xwl = xmolwl * fmw_comp(1) / fmw_liq
-  xco2l = xmolco2l * fmw_comp(2) / fmw_liq
-  xsl = xmolsl * fmw_comp(3) / fmw_liq
+  xwl = xmolwl * sco2_fmw_comp(1) / fmw_liq
+  xco2l = xmolco2l * sco2_fmw_comp(2) / fmw_liq
+  xsl = xmolsl * sco2_fmw_comp(3) / fmw_liq
 
 
 end subroutine SCO2Equilibrate
@@ -2316,7 +2318,7 @@ subroutine SCO2SurfaceTension(T,x_nacl,surface_tension)
 
   PetscReal :: molality
 
-  molality = 1.d3*x_nacl/(fmw_comp(3)*(1.d0-x_nacl))
+  molality = 1.d3*x_nacl/(sco2_fmw_comp(3)*(1.d0-x_nacl))
 
   ! Pure water
   surface_tension = 1.d-3*(75.6592d0 - 1.40959d-1*T - 2.66317d-4*(T**2))
@@ -2388,7 +2390,7 @@ subroutine SCO2BrineSaturationPressure(T, x_salt, P_sat)
   PetscInt :: i
 
   T_k = T + T273K
-  x_salt_molal = 1.d3 * x_salt / (fmw_comp(3) * (1.d0 - x_salt))
+  x_salt_molal = 1.d3 * x_salt / (sco2_fmw_comp(3) * (1.d0 - x_salt))
 
   a = 1.d0
   do i = 1,3
@@ -2570,7 +2572,7 @@ subroutine SCO2WaterDensity(T,P,isubr,rho_l,rho_v,option)
           (s_a(9) + (T_r **2)) * (-3.d0 / ((s_a(10) + P_r) ** 4))
     r_v = r_v + 3.d0 * c_a(22) * (s_a(12) - T_r) * (P_r **2) + &
           4.d0 * c_a(23) * (P_r**3) / (T_r **20)
-    rho_l = 1.d3 * fmw_comp(1) / (r_v * v_c)
+    rho_l = 1.d3 * sco2_fmw_comp(1) / (r_v * v_c)
   endif
 
   if (isubr == 2 .or. isubr == 6) then
@@ -2613,7 +2615,7 @@ subroutine SCO2WaterDensity(T,P,isubr,rho_l,rho_v,option)
       r_va = r_va + c_b(indx) * (c_x ** i)
     enddo
     r_v = r_v + 1.1d1 * ((P_R / beta_l) ** 10) * r_va
-    rho_v = 1.d3 * fmw_comp(1) / (r_v * v_c)
+    rho_v = 1.d3 * sco2_fmw_comp(1) / (r_v * v_c)
   endif
 
   if (isubr == 3 .or. isubr == 5) then
@@ -2667,7 +2669,7 @@ subroutine SCO2BrineDensity(T, P, x_s, rho_b, option)
   PetscReal :: phi0, phi
 
   P_bar = P * 1.d-5
-  x_s_molal = 1.d3 * x_s / (fmw_comp(3) * (1.d0 - x_s))
+  x_s_molal = 1.d3 * x_s / (sco2_fmw_comp(3) * (1.d0 - x_s))
 
   call SCO2WaterSaturationPressure(T, P_sat)
   P_w = max(P,P_sat)
@@ -2680,7 +2682,7 @@ subroutine SCO2BrineDensity(T, P, x_s, rho_b, option)
   phi = phi0 + (c_h(4) + c_h(5) * spec_vol) * &
                ((spec_vol/(v_c - spec_vol)) ** 2) * sqrt(x_s_molal)
 
-  rho_b = (1.d3 + x_s_molal * fmw_comp(3)) / &
+  rho_b = (1.d3 + x_s_molal * sco2_fmw_comp(3)) / &
           (1.d3 * spec_vol + x_s_molal * phi)
 
   ! kg/m^3
@@ -2718,7 +2720,7 @@ subroutine SCO2BrineEnthalpy(T, x_s, H_w, H_b)
   PetscInt :: i,j,n_c
   PetscReal :: dh_mix
 
-  s_molality = 1.d3 * x_s / (fmw_comp(3)*(1.d0-x_s))
+  s_molality = 1.d3 * x_s / (sco2_fmw_comp(3)*(1.d0-x_s))
 
   ! Enthalpy of mixing
   dh_mix = 0.d0
@@ -2730,10 +2732,10 @@ subroutine SCO2BrineEnthalpy(T, x_s, H_w, H_b)
     enddo
   enddo
 
-  dh_mix = (4.184d3/(1.d3+fmw_comp(3)*s_molality))*dh_mix
+  dh_mix = (4.184d3/(1.d3+sco2_fmw_comp(3)*s_molality))*dh_mix
 
   ! Enthalpy of pure NaCl
-  h_salt = 4.184d3*(s_b(1)*(T**3) + s_b(2)*(T**2) + s_b(3)*T)/fmw_comp(3)
+  h_salt = 4.184d3*(s_b(1)*(T**3) + s_b(2)*(T**2) + s_b(3)*T)/sco2_fmw_comp(3)
 
 
   ! Enthalpy of brine
@@ -2774,13 +2776,13 @@ subroutine SCO2DensityCompositeLiquid(T,rho_b,x_co2, rho_l)
         pv_co2 = pv_co2 + pv_coeff(i) * (T ** (i-1))
       enddo
 
-      c_co2 = pv_co2 * rho_b * x_co2 / fmw_comp(2)
+      c_co2 = pv_co2 * rho_b * x_co2 / sco2_fmw_comp(2)
 
       rho_l = rho_b / (1.d0 + c_co2 - x_co2)
     case(DENSITY_GARCIA)
       v_phi = 1.d-6 * (37.51d0 - 9.585d-2 * T + 8.74d-4 * T**2 - 5.044d-7 * &
                        T**3)
-      rho_n_phi = fmw_comp(TWO_INTEGER) / v_phi
+      rho_n_phi = sco2_fmw_comp(TWO_INTEGER) / v_phi
       rho_l = 1.d0 / ((1.d0 - x_co2) / (rho_b) + x_co2 / rho_n_phi)
   end select
 
@@ -2933,11 +2935,11 @@ subroutine SCO2ViscosityGas(visc_w, visc_co2, xwg, xco2g, visc)
   PetscReal :: phi_w, phi_co2, chi_w, chi_co2
 
   phi_w = ((1.d0 + sqrt(visc_co2/visc_w) * &
-        ((fmw_comp(1)/fmw_comp(2)) ** 2.5d-1)) **2) / &
-        sqrt(8.d0 * (1.d0 + fmw_comp(2)/fmw_comp(1)))
+        ((sco2_fmw_comp(1)/sco2_fmw_comp(2)) ** 2.5d-1)) **2) / &
+        sqrt(8.d0 * (1.d0 + sco2_fmw_comp(2)/sco2_fmw_comp(1)))
   phi_co2 = ((1.d0 + sqrt(visc_w/visc_co2) * &
-        ((fmw_comp(2)/fmw_comp(1)) ** 2.5d-1)) **2) / &
-        sqrt(8.d0 * (1.d0 + fmw_comp(1)/fmw_comp(2)))
+        ((sco2_fmw_comp(2)/sco2_fmw_comp(1)) ** 2.5d-1)) **2) / &
+        sqrt(8.d0 * (1.d0 + sco2_fmw_comp(1)/sco2_fmw_comp(2)))
   chi_w = xwg + xco2g * phi_co2
   chi_co2 = xwg * phi_w + xco2g
   visc = xwg * visc_w / chi_w + xco2g * visc_co2 / chi_co2
@@ -2965,7 +2967,7 @@ subroutine SCO2ViscosityBrine(T, x_salt, visc_w, visc_b)
                                     0.000629d0,-0.7d0]
   PetscReal :: x_salt_molal
 
-  x_salt_molal = 1.d3 * x_salt / (fmw_comp(3) * (1.d0 - x_salt))
+  x_salt_molal = 1.d3 * x_salt / (sco2_fmw_comp(3) * (1.d0 - x_salt))
 
   visc_b = visc_w * (1.d0 + s_a(1) * x_salt_molal + s_a(2) * &
            (x_salt_molal ** 2) + s_a(3) * (x_salt_molal ** 3) + &
@@ -3026,7 +3028,7 @@ function SCO2EnthalpyCompositeLiquid(T, x_salt, x_co2, h_brine, h_co2)
   dHc = log(Hc_pert / Hc) / dT
 
   T_k = T + T273K
-  h_sol = -IDEAL_GAS_CONSTANT * 1.d3 * (T_k **2) * dHc / fmw_comp(2)
+  h_sol = -IDEAL_GAS_CONSTANT * 1.d3 * (T_k **2) * dHc / sco2_fmw_comp(2)
 
   ! J/kg
   SCO2EnthalpyCompositeLiquid = max(1.d0-x_co2,0.d0) * h_brine + &
@@ -3070,7 +3072,8 @@ function SCO2Henry(T, x_salt)
   enddo
 
   SCO2Henry = Hc * &
-              (1.d1 ** (1.d3 * x_salt / (fmw_comp(3) * (1.d0 - x_salt)) * skb))
+              (1.d1 ** (1.d3 * x_salt / &
+               (sco2_fmw_comp(3) * (1.d0 - x_salt)) * skb))
 
 
 end function SCO2Henry
@@ -3129,7 +3132,7 @@ subroutine SCO2DiffusionCoeff(T,P,xsl,viscl,sco2_parameter,Dco2l,Dwg,Dnacl, &
   T_r = T_k / eps
   omega = (c_a(1) / (T_r ** c_a(2))) + (c_a(3) / (exp(c_a(4) * T_r))) + &
           (c_a(5) / (exp(c_a(6) * T_r))) + (c_a(7) / (exp(c_a(8) * T_r)))
-  w_mix = 2.d0 / ((1.d0 / fmw_comp(2)) + (1.d0 / fmw_comp(1)))
+  w_mix = 2.d0 / ((1.d0 / sco2_fmw_comp(2)) + (1.d0 / sco2_fmw_comp(1)))
   Dwg = (3.03d0 - (9.8d-1 / sqrt(w_mix))) * 1.d-3 * &
                     (T_k ** 1.5d0) / (P_bar * sqrt(w_mix) * (sig ** 2) * &
                      omega) * 1.d-4
@@ -3139,11 +3142,12 @@ subroutine SCO2DiffusionCoeff(T,P,xsl,viscl,sco2_parameter,Dco2l,Dwg,Dnacl, &
   Dco2l = Dco2l*1.d-9
 
   ! Correct for NaCl
-  Dco2l = Dco2l*(1.6678d0 - 1.2531d-1*(1.d3*(xsl/fmw_comp(THREE_INTEGER)) / &
-         (1.d0-xsl))) / 1.6678d0
+  Dco2l = Dco2l*(1.6678d0 - 1.2531d-1*( &
+          1.d3*(xsl/sco2_fmw_comp(THREE_INTEGER)) / &
+          (1.d0-xsl))) / 1.6678d0
 
   ! Salt diffusion through the liquid phase
-  s_molal = 1.d3 * xsl / (fmw_comp(THREE_INTEGER) * (1.d0 - xsl))
+  s_molal = 1.d3 * xsl / (sco2_fmw_comp(THREE_INTEGER) * (1.d0 - xsl))
 
   if (s_molal > epsilon) then
     dlng = (-0.2555d0/(sqrt(s_molal)*(1.d0+sqrt(s_molal))) + &
@@ -3375,7 +3379,7 @@ subroutine SCO2SaltEnthalpy(T,H)
   enddo
 
   ! J/kg
-  H = 1.d3 * H / fmw_comp(THREE_INTEGER)
+  H = 1.d3 * H / sco2_fmw_comp(THREE_INTEGER)
 
 end subroutine SCO2SaltEnthalpy
 

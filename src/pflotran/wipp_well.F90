@@ -1023,7 +1023,7 @@ subroutine WIPPWellSolveFlowSequential(this,perturbation_index,ierr)
   use Grid_module
   use EOS_Water_module
   use EOS_Gas_module
-  use SCO2_Aux_module, only : fmw_comp, SCO2BrineDensity
+  use SCO2_Aux_module, only : sco2_fmw_comp, SCO2BrineDensity
 
   implicit none
 
@@ -1636,7 +1636,7 @@ subroutine PMWellUpdateWellQ(well,reservoir)
         mobility = gas%kr(i)/gas%visc(i)
       endif
       den_ave = 0.5d0 * (gas%den(i) + reservoir%den_g(i)) / &
-                          fmw_comp(TWO_INTEGER)
+                          wipp_fmw_comp(TWO_INTEGER)
 
       ! Flowrate in kmol/s
       gas%Q(i) = den_ave*mobility*well%WI(i)* &
@@ -1673,7 +1673,7 @@ subroutine PMWellAccumulationFlow(pm_well,well,id,Res)
             well%phi(id) * well%volume(id) / pm_well%dt_flow
   ! gas accumulation term
   Res(2) = Res(2) + well%gas%s(id) * well%gas%den(id) / &
-            fmw_comp(TWO_INTEGER) * well%phi(id) * well%volume(id) / &
+            wipp_fmw_comp(TWO_INTEGER) * well%phi(id) * well%volume(id) / &
             pm_well%dt_flow
 
 end subroutine PMWellAccumulationFlow
@@ -1822,7 +1822,7 @@ subroutine PMWellFlux(pm_well,well_up,well_dn,iup,idn,Res,save_flux)
   !
 
   !MAN: will removing this break regression tests?
-  ! use SCO2_Aux_module, only: sco2_fmw => fmw_comp
+  ! use SCO2_Aux_module, only: sco2_fmw => sco2_fmw_comp
 
   implicit none
 
@@ -1862,13 +1862,13 @@ subroutine PMWellFlux(pm_well,well_up,well_dn,iup,idn,Res,save_flux)
                           FMWH2O / well_up%liq%visc(iup) * &
                           PI * (well_up%diameter(iup)/2.d0)**2
     perm_den_mu_area_up(2) = perm_up * well_up%gas%den(iup) / &
-                          fmw_comp(TWO_INTEGER) / well_up%gas%visc(iup) * &
+                          wipp_fmw_comp(TWO_INTEGER) / well_up%gas%visc(iup) * &
                           PI * (well_up%diameter(iup)/2.d0)**2
     perm_den_mu_area_dn(1) = perm_dn * well_dn%liq%den(idn) / &
                           FMWH2O / well_dn%liq%visc(idn) * &
                           PI * (well_dn%diameter(idn)/2.d0)**2
     perm_den_mu_area_dn(2) = perm_dn * well_dn%gas%den(idn) / &
-                          fmw_comp(TWO_INTEGER) / well_dn%gas%visc(idn) * &
+                          wipp_fmw_comp(TWO_INTEGER) / well_dn%gas%visc(idn) * &
                           PI * (well_dn%diameter(idn)/2.d0)**2
 
     perm_den_mu_area_ave_over_dist(1) = &
@@ -1905,7 +1905,7 @@ subroutine PMWellFlux(pm_well,well_up,well_dn,iup,idn,Res,save_flux)
     !kmol/sec
     tot_mole_flux = perm_den_mu_area_ave_over_dist(1) * rel_perm * &
               delta_pressure
-    density_ave_kmol = density_kg_ave / fmw_comp(ONE_INTEGER)
+    density_ave_kmol = density_kg_ave / wipp_fmw_comp(ONE_INTEGER)
     ! v_darcy = kmol/sec / kmol/m^3 / area[m^2]
     v_darcy = tot_mole_flux/density_ave_kmol/(5.d-1*(well_up%area(iup)+ &
               well_dn%area(idn)))
@@ -1944,7 +1944,7 @@ subroutine PMWellFlux(pm_well,well_up,well_dn,iup,idn,Res,save_flux)
     !kmol/sec
     tot_mole_flux = perm_den_mu_area_ave_over_dist(2) * rel_perm * &
                     delta_pressure
-    density_ave_kmol = density_kg_ave / fmw_comp(TWO_INTEGER)
+    density_ave_kmol = density_kg_ave / wipp_fmw_comp(TWO_INTEGER)
     ! v_darcy [m/sec] = mole flux [kmol/sec] / den [kmol/m^3] / area[m^2]
     v_darcy = tot_mole_flux/density_ave_kmol/(5.d-1*(well_up%area(iup) + &
                         well_dn%area(idn)))
@@ -2098,7 +2098,7 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
       density_ave = boundary_den
     else
       density_ave = (well%liq%den(1)+boundary_den) / &
-                    (2.d0 * fmw_comp(ONE_INTEGER))
+                    (2.d0 * wipp_fmw_comp(ONE_INTEGER))
     endif
     q = v_darcy * well%area(1)
     tot_mole_flux = q * density_ave
@@ -2179,7 +2179,7 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
       density_ave = boundary_den
     else
       density_ave = (well%gas%den(1)+boundary_den) / &
-                    (2.d0 *fmw_comp(TWO_INTEGER))
+                    (2.d0 *wipp_fmw_comp(TWO_INTEGER))
     endif
     q = v_darcy * well%area(1)
     tot_mole_flux = q * density_ave
@@ -2195,9 +2195,9 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
     v_darcy = well%bh_ql
 
     if (v_darcy > 0.d0) then
-      density_ave = reservoir%den_l(1) / fmw_comp(ONE_INTEGER)
+      density_ave = reservoir%den_l(1) / wipp_fmw_comp(ONE_INTEGER)
     else
-      density_ave = well%liq%den(1) / fmw_comp(ONE_INTEGER)
+      density_ave = well%liq%den(1) / wipp_fmw_comp(ONE_INTEGER)
     endif
     q = v_darcy * well%area(1)
     tot_mole_flux = q * density_ave
@@ -2211,9 +2211,9 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
     v_darcy = well%bh_qg
 
     if (v_darcy > 0.d0) then
-      density_ave = reservoir%den_g(1) / fmw_comp(TWO_INTEGER)
+      density_ave = reservoir%den_g(1) / wipp_fmw_comp(TWO_INTEGER)
     else
-      density_ave = well%gas%den(1) / fmw_comp(TWO_INTEGER)
+      density_ave = well%gas%den(1) / wipp_fmw_comp(TWO_INTEGER)
     endif
     q = v_darcy * well%area(1)
     tot_mole_flux = q * density_ave
@@ -2262,7 +2262,7 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
               delta_pressure
 
     density_ave = (well%liq%den(itop)+boundary_den) / &
-                  (2.d0 * fmw_comp(ONE_INTEGER))
+                  (2.d0 * wipp_fmw_comp(ONE_INTEGER))
     q = v_darcy * well%area(itop)
     tot_mole_flux = q * density_ave
     ! Store boundary flux for consistency with transport
@@ -2340,7 +2340,7 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
               delta_pressure
 
     density_ave = (well%gas%den(itop)+boundary_den) / &
-                  (2.d0 *fmw_comp(TWO_INTEGER))
+                  (2.d0 *wipp_fmw_comp(TWO_INTEGER))
     q = v_darcy * well%area(itop)
     tot_mole_flux = q * density_ave
     ! Store boundary flux for consistency with transport
@@ -2354,7 +2354,7 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
     v_darcy = -well%th_ql
 
     ! Always take well density with tophole flux bc
-    density_ave = well%liq%den(itop) / fmw_comp(ONE_INTEGER)
+    density_ave = well%liq%den(itop) / wipp_fmw_comp(ONE_INTEGER)
     q = v_darcy * well%area(itop)
     tot_mole_flux = q * density_ave
     ! Store boundary flux for consistency with transport
@@ -2367,7 +2367,7 @@ subroutine PMWellBCFlux(pm_well,well,Res,save_flux)
     v_darcy = -well%th_qg
 
     ! Always take well density with tophole flux bc
-    density_ave = well%gas%den(itop) / fmw_comp(TWO_INTEGER)
+    density_ave = well%gas%den(itop) / wipp_fmw_comp(TWO_INTEGER)
     q = v_darcy * well%area(itop)
     tot_mole_flux = q * density_ave
     ! Store boundary flux for consistency with transport

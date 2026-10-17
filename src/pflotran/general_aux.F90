@@ -27,7 +27,7 @@ module General_Aux_module
   PetscBool, public :: general_prevent_gp_phase = PETSC_FALSE
   PetscBool, public :: general_salt = PETSC_FALSE
   PetscReal, public :: window_epsilon = 1.d-4 !0.d0
-  PetscReal, public :: fmw_comp(3) = [FMWH2O,FMWAIR,FMWNACL]
+  PetscReal, public :: gen_fmw_comp(3) = [FMWH2O,FMWAIR,FMWNACL]
   PetscReal, public :: general_max_pressure_change = 5.d4
   PetscInt, public :: general_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: general_damping_factor = 0.6d0
@@ -1342,7 +1342,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     h_water_vapor = h_water_vapor * 1.d-6 ! J/kmol -> MJ/kmol
     u_water_vapor = u_water_vapor * 1.d-6 ! J/kmol -> MJ/kmol
     gen_auxvar%den(gid) = den_water_vapor + den_air
-    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*fmw_comp(gid)
+    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*gen_fmw_comp(gid)
     ! if xmol not set for gas phase, as is the case for GEN_LIQUID_STATE,
     ! set based on densities
 !    if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
@@ -1354,11 +1354,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 !    endif
 
 #ifdef DEBUG_GENERAL
-    xmass_air_in_gas = xmol_air_in_gas*fmw_comp(gid) / &
+    xmass_air_in_gas = xmol_air_in_gas*gen_fmw_comp(gid) / &
                        (xmol_water_in_gas*FMWH2O + &
-                        xmol_air_in_gas*fmw_comp(gid))
-    Hair_J_kg = h_air*1.d6/fmw_comp(gid)
-    Uair_J_kg = u_air*1.d6/fmw_comp(gid)
+                        xmol_air_in_gas*gen_fmw_comp(gid))
+    Hair_J_kg = h_air*1.d6/gen_fmw_comp(gid)
+    Uair_J_kg = u_air*1.d6/gen_fmw_comp(gid)
     Hvapor_J_kg = h_water_vapor*1.d6/FMWH2O
     Uvapor_J_kg = u_water_vapor*1.d6/FMWH2O
     Ugas_J_kg = xmass_air_in_gas*Uair_J_kg + &
@@ -1406,10 +1406,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                              dden_air_dpa
       gen_auxvar%d%dengkg_pg = dden_water_vapor_dpv * gen_auxvar%d%pv_p * &
                                  FMWH2O + &
-                               dden_air_dpa * dpair_dpgas * fmw_comp(2)
+                               dden_air_dpa * dpair_dpgas * gen_fmw_comp(2)
       gen_auxvar%d%deng_T = dden_water_vapor_dT + dden_air_dT
       gen_auxvar%d%dengkg_T = dden_water_vapor_dT*FMWH2O + &
-                                dden_air_dT*fmw_comp(2)
+                                dden_air_dT*gen_fmw_comp(2)
       gen_auxvar%d%Ug_pg = xmol_water_in_gas * du_water_vapor_dpv * &
                              gen_auxvar%d%pv_p + &
                            gen_auxvar%d%xmol_p(wid,gid) * u_water_vapor + &
@@ -2471,7 +2471,7 @@ subroutine GeneralAuxVarCompute4(x,gen_auxvar,global_auxvar,material_auxvar, &
     h_water_vapor = h_water_vapor * 1.d-6 ! J/kmol -> MJ/kmol
     u_water_vapor = u_water_vapor * 1.d-6 ! J/kmol -> MJ/kmol
     gen_auxvar%den(gid) = den_water_vapor + den_air
-    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*fmw_comp(gid)
+    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*gen_fmw_comp(gid)
     ! if xmol not set for gas phase, as is the case for GEN_LIQUID_STATE,
     ! set based on densities
 !    if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
@@ -2483,11 +2483,11 @@ subroutine GeneralAuxVarCompute4(x,gen_auxvar,global_auxvar,material_auxvar, &
 !    endif
 
 #ifdef DEBUG_GENERAL
-    xmass_air_in_gas = xmol_air_in_gas*fmw_comp(gid) / &
+    xmass_air_in_gas = xmol_air_in_gas*gen_fmw_comp(gid) / &
                        (xmol_water_in_gas*FMWH2O + &
-                        xmol_air_in_gas*fmw_comp(gid))
-    Hair_J_kg = h_air*1.d6/fmw_comp(gid)
-    Uair_J_kg = u_air*1.d6/fmw_comp(gid)
+                        xmol_air_in_gas*gen_fmw_comp(gid))
+    Hair_J_kg = h_air*1.d6/gen_fmw_comp(gid)
+    Uair_J_kg = u_air*1.d6/gen_fmw_comp(gid)
     Hvapor_J_kg = h_water_vapor*1.d6/FMWH2O
     Uvapor_J_kg = u_water_vapor*1.d6/FMWH2O
     Ugas_J_kg = xmass_air_in_gas*Uair_J_kg + &
@@ -2534,9 +2534,10 @@ subroutine GeneralAuxVarCompute4(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%d%deng_pa = dden_water_vapor_dpv * gen_auxvar%d%pv_pa + &
                              dden_air_dpa
       gen_auxvar%d%dengkg_pg = dden_water_vapor_dpv * gen_auxvar%d%pv_p * FMWH2O + &
-                               dden_air_dpa * dpair_dpgas * fmw_comp(2)
+                               dden_air_dpa * dpair_dpgas * gen_fmw_comp(2)
       gen_auxvar%d%deng_T = dden_water_vapor_dT + dden_air_dT
-      gen_auxvar%d%dengkg_T = dden_water_vapor_dT*FMWH2O + dden_air_dT*fmw_comp(2)
+      gen_auxvar%d%dengkg_T = dden_water_vapor_dT*FMWH2O + &
+                              dden_air_dT*gen_fmw_comp(2)
       gen_auxvar%d%Ug_pg = xmol_water_in_gas * du_water_vapor_dpv * gen_auxvar%d%pv_p + &
                            gen_auxvar%d%xmol_p(wid,gid) * u_water_vapor + &
                            xmol_air_in_gas * du_air_dpa * dpair_dpgas + &
@@ -2784,19 +2785,19 @@ subroutine GeneralAuxNaClSolubility(T,x_sol,solubility_function)
     case(1)  !Sparrow
        ! mass fraction: kg solute/kg solution
        w_sol = 0.2628 + 62.75d-6 * T + 1.084d-6 * T**2
-       avg_molar_mass = (w_sol/fmw_comp(3)+(1-w_sol)/fmw_comp(1))**(-1)
-       x_sol = w_sol/fmw_comp(3)*avg_molar_mass
+       avg_molar_mass = (w_sol/gen_fmw_comp(3)+(1-w_sol)/gen_fmw_comp(1))**(-1)
+       x_sol = w_sol/gen_fmw_comp(3)*avg_molar_mass
     case(2)!Lagner and Offerman
        ! mass fraction: mass of component/mass of phase
        c = (35.335-0.22947*T)/(1-0.0069059*T)
        w_sol = c/(100+c)
-       avg_molar_mass = (w_sol/fmw_comp(3)+(1-w_sol)/fmw_comp(1))**(-1)
-       x_sol = w_sol/fmw_comp(3)*avg_molar_mass
+       avg_molar_mass = (w_sol/gen_fmw_comp(3)+(1-w_sol)/gen_fmw_comp(1))**(-1)
+       x_sol = w_sol/gen_fmw_comp(3)*avg_molar_mass
     case default
       ! default solubility function is Sparrow
       w_sol = 0.2628 + 62.75d-6 * T + 1.084d-6 * T**2
-      avg_molar_mass = (w_sol/fmw_comp(3)+(1-w_sol)/fmw_comp(1))**(-1)
-      x_sol = w_sol/fmw_comp(3)*avg_molar_mass
+      avg_molar_mass = (w_sol/gen_fmw_comp(3)+(1-w_sol)/gen_fmw_comp(1))**(-1)
+      x_sol = w_sol/gen_fmw_comp(3)*avg_molar_mass
   end select
 
 end subroutine GeneralAuxNaClSolubility
@@ -4721,7 +4722,7 @@ subroutine EOSPrecipitateEnergy(T,U)
   PetscReal :: wsh = 1.d0 ! Halite mass fraction
 
   U = (3144.0*T)*wsw + (800*T)*wsh !J/kg
-  U = U * fmw_comp(THREE_INTEGER) !J/kmol
+  U = U * gen_fmw_comp(THREE_INTEGER) !J/kmol
 
 end subroutine EOSPrecipitateEnergy
 
