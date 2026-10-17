@@ -475,8 +475,8 @@ subroutine SSSandboxOutput(sandbox_list,option,output_option)
 
   use Option_module
   use Output_Aux_module
-  use General_Aux_module, only : general_fmw => gen_fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
+  use General_Aux_module, only : gen_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_fmw_comp
   use Richards_Aux_module, only : richards_density_kmol_to_kg
 
   implicit none
@@ -499,9 +499,9 @@ subroutine SSSandboxOutput(sandbox_list,option,output_option)
     case(TH_MODE,TH_TS_MODE)
       flow_dof_scale(1) = FMWH2O
     case(G_MODE,H_MODE)
-      flow_dof_scale(1:2) = general_fmw(1:2)
+      flow_dof_scale(1:2) = gen_fmw_comp(1:2)
     case(WF_MODE)
-      flow_dof_scale(1:2) = wipp_flow_fmw(1:2)
+      flow_dof_scale(1:2) = wipp_fmw_comp(1:2)
     case(MPH_MODE)
       flow_dof_scale(1) = FMWH2O
       flow_dof_scale(2) = FMWCO2

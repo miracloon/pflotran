@@ -6931,14 +6931,14 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
   use Reaction_module
   use Reactive_Transport_Aux_module
   use Reaction_Surface_Complexation_Aux_module
-  use General_Aux_module, only : general_fmw => gen_fmw_comp, &
+  use General_Aux_module, only : gen_fmw_comp, &
                                  GEN_GAS_STATE, GEN_LIQUID_STATE
-  use Hydrate_Aux_module, only : hydrate_fmw => hydrate_fmw_comp, &
+  use Hydrate_Aux_module, only : hydrate_fmw_comp, &
                                  G_STATE, L_STATE
   use WIPP_Flow_Aux_module, only : WIPPFloScalePerm
   use ZFlow_Aux_module
   use THC_Aux_module
-  use SCO2_Aux_module, only : sco2_fmw => sco2_fmw_comp, &
+  use SCO2_Aux_module, only : sco2_fmw_comp, &
                               SCO2_LIQUID_STATE, SCO2_GAS_STATE
   use Immiscible_Aux_module
   use Output_Aux_module
@@ -7635,9 +7635,9 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              vec_ptr(:) = vec_ptr(:)*general_fmw(tempint) / &
-                           (vec_ptr(:)*general_fmw(tempint) + &
-                            (1.d0-vec_ptr(:))*general_fmw(tempint2))
+              vec_ptr(:) = vec_ptr(:)*gen_fmw_comp(tempint) / &
+                           (vec_ptr(:)*gen_fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*gen_fmw_comp(tempint2))
             endif
           case(LIQUID_MOBILITY)
             do local_id=1,grid%nlmax
@@ -7696,9 +7696,9 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              vec_ptr(:) = vec_ptr(:)*general_fmw(tempint) / &
-                           (vec_ptr(:)*general_fmw(tempint) + &
-                            (1.d0-vec_ptr(:))*general_fmw(tempint2))
+              vec_ptr(:) = vec_ptr(:)*gen_fmw_comp(tempint) / &
+                           (vec_ptr(:)*gen_fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*gen_fmw_comp(tempint2))
             endif
           case(GAS_MOBILITY)
             do local_id=1,grid%nlmax
@@ -7831,9 +7831,9 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              vec_ptr(:) = vec_ptr(:)*hydrate_fmw(tempint) / &
-                           (vec_ptr(:)*hydrate_fmw(tempint) + &
-                            (1.d0-vec_ptr(:))*hydrate_fmw(tempint2))
+              vec_ptr(:) = vec_ptr(:)*hydrate_fmw_comp(tempint) / &
+                           (vec_ptr(:)*hydrate_fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*hydrate_fmw_comp(tempint2))
             endif
           case(LIQUID_MOBILITY)
             do local_id=1,grid%nlmax
@@ -7887,9 +7887,9 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              vec_ptr(:) = vec_ptr(:)*hydrate_fmw(tempint) / &
-                           (vec_ptr(:)*hydrate_fmw(tempint) + &
-                            (1.d0-vec_ptr(:))*hydrate_fmw(tempint2))
+              vec_ptr(:) = vec_ptr(:)*hydrate_fmw_comp(tempint) / &
+                           (vec_ptr(:)*hydrate_fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*hydrate_fmw_comp(tempint2))
             endif
           case(GAS_MOBILITY)
             do local_id=1,grid%nlmax
@@ -8171,9 +8171,9 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              vec_ptr(:) = vec_ptr(:)*sco2_fmw(tempint) / &
-                           (vec_ptr(:)*sco2_fmw(tempint) + &
-                            (1.d0-vec_ptr(:))*sco2_fmw(tempint2))
+              vec_ptr(:) = vec_ptr(:)*sco2_fmw_comp(tempint) / &
+                           (vec_ptr(:)*sco2_fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*sco2_fmw_comp(tempint2))
             endif
           case(LIQUID_MOBILITY)
             do local_id=1,grid%nlmax
@@ -8227,9 +8227,9 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              vec_ptr(:) = vec_ptr(:)*sco2_fmw(tempint) / &
-                           (vec_ptr(:)*sco2_fmw(tempint) + &
-                            (1.d0-vec_ptr(:))*sco2_fmw(tempint2))
+              vec_ptr(:) = vec_ptr(:)*sco2_fmw_comp(tempint) / &
+                           (vec_ptr(:)*sco2_fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*sco2_fmw_comp(tempint2))
             endif
           case(GAS_MOBILITY)
             do local_id=1,grid%nlmax
@@ -9163,9 +9163,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
   use Output_Aux_module
   use ERT_Aux_module
   use Variables_module
-  use General_Aux_module, only : general_fmw => gen_fmw_comp, &
+  use General_Aux_module, only : gen_fmw_comp, &
                                  GEN_GAS_STATE, GEN_LIQUID_STATE
-  use Hydrate_Aux_module, only : hydrate_fmw => hydrate_fmw_comp, &
+  use Hydrate_Aux_module, only : hydrate_fmw_comp, &
                                  G_STATE, L_STATE
   use WIPP_Flow_Aux_module, only : WIPPFloScalePerm
   use ZFlow_Aux_module
@@ -9577,9 +9577,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              value = value*general_fmw(tempint) / &
-                      (value*general_fmw(tempint) + &
-                       (1.d0-value)*general_fmw(tempint2))
+              value = value*gen_fmw_comp(tempint) / &
+                      (value*gen_fmw_comp(tempint) + &
+                       (1.d0-value)*gen_fmw_comp(tempint2))
             endif
           case(LIQUID_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -9615,9 +9615,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              value = value*general_fmw(tempint) / &
-                      (value*general_fmw(tempint) + &
-                       (1.d0-value)*general_fmw(tempint2))
+              value = value*gen_fmw_comp(tempint) / &
+                      (value*gen_fmw_comp(tempint) + &
+                       (1.d0-value)*gen_fmw_comp(tempint2))
             endif
           case(GAS_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -9715,9 +9715,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              value = value*hydrate_fmw(tempint) / &
-                      (value*hydrate_fmw(tempint) + &
-                       (1.d0-value)*hydrate_fmw(tempint2))
+              value = value*hydrate_fmw_comp(tempint) / &
+                      (value*hydrate_fmw_comp(tempint) + &
+                       (1.d0-value)*hydrate_fmw_comp(tempint2))
             endif
           case(LIQUID_MOBILITY)
             value = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -9753,9 +9753,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
               tempint = isubvar
               tempint2 = tempint+1
               if (tempint2 > 2) tempint2 = 1
-              value = value*hydrate_fmw(tempint) / &
-                      (value*hydrate_fmw(tempint) + &
-                       (1.d0-value)*hydrate_fmw(tempint2))
+              value = value*hydrate_fmw_comp(tempint) / &
+                      (value*hydrate_fmw_comp(tempint) + &
+                       (1.d0-value)*hydrate_fmw_comp(tempint2))
             endif
           case(GAS_MOBILITY)
             value = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &

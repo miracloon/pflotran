@@ -133,8 +133,8 @@ subroutine MassRateSetup(this,grid,region_list,material_auxvars,option)
 
   use Option_module
   use Grid_module
-  use General_Aux_module, only : general_fmw => gen_fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
+  use General_Aux_module, only : gen_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_fmw_comp
   use Material_Aux_module, only: material_auxvar_type
   use Richards_Aux_module, only : richards_density_kmol_to_kg
   use Region_module
@@ -153,9 +153,9 @@ subroutine MassRateSetup(this,grid,region_list,material_auxvars,option)
     case(RICHARDS_MODE)
       this%rate(1) = this%rate(1) / richards_density_kmol_to_kg
     case(G_MODE,H_MODE)
-      this%rate(:) = this%rate(:) / general_fmw(:)
+      this%rate(:) = this%rate(:) / gen_fmw_comp(:)
     case(WF_MODE)
-      this%rate(:) = this%rate(:) / wipp_flow_fmw(:)
+      this%rate(:) = this%rate(:) / wipp_fmw_comp(:)
     case default
       option%io_buffer = 'Rate conversion not set up for flow mode in ' // &
                          'MassRateSetup'

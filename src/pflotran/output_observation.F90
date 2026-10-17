@@ -2018,9 +2018,9 @@ subroutine OutputIntegralFlux(realization_base)
   use Integral_Flux_module
   use Utility_module
   use Immiscible_Aux_module, only : immis_fmw
-  use General_Aux_module, only : general_fmw => gen_fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
-  use SCO2_Aux_module, only : sco2_fmw => sco2_fmw_comp
+  use General_Aux_module, only : gen_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_fmw_comp
+  use SCO2_Aux_module, only : sco2_fmw_comp
   use Richards_Aux_module, only : richards_density_kmol_to_kg
 
   implicit none
@@ -2067,10 +2067,10 @@ subroutine OutputIntegralFlux(realization_base)
       flow_dof_scale(1) = FMWH2O
     case(G_MODE,H_MODE)
       flow_dof_scale(1) = FMWH2O
-      flow_dof_scale(2) = general_fmw(2)
+      flow_dof_scale(2) = gen_fmw_comp(2)
     case(WF_MODE)
       flow_dof_scale(1) = FMWH2O
-      flow_dof_scale(2) = wipp_flow_fmw(2)
+      flow_dof_scale(2) = wipp_fmw_comp(2)
     case(IMMISCIBLE_MODE)
       flow_dof_scale(1) = immis_fmw(1)
       flow_dof_scale(2) = immis_fmw(2)
@@ -2079,9 +2079,9 @@ subroutine OutputIntegralFlux(realization_base)
       flow_dof_scale(2) = FMWCO2
     case(SCO2_MODE)
       !MAN: double check if this is mass or molar
-      flow_dof_scale(1) = sco2_fmw(1)
-      flow_dof_scale(2) = sco2_fmw(2)
-      flow_dof_scale(3) = sco2_fmw(3)
+      flow_dof_scale(1) = sco2_fmw_comp(1)
+      flow_dof_scale(2) = sco2_fmw_comp(2)
+      flow_dof_scale(3) = sco2_fmw_comp(3)
   end select
 
   if (len_trim(output_option%plot_name) > 2) then
@@ -2343,8 +2343,8 @@ subroutine OutputMassBalance(realization_base)
   use Reaction_Aux_module
   use NW_Transport_Aux_module
   use Material_Aux_module
-  use General_Aux_module, only : general_fmw => gen_fmw_comp
-  use WIPP_Flow_Aux_module, only : wipp_flow_fmw => wipp_fmw_comp
+  use General_Aux_module, only : gen_fmw_comp
+  use WIPP_Flow_Aux_module, only : wipp_fmw_comp
   use Richards_Aux_module, only : richards_density_kmol_to_kg
 
   implicit none
@@ -3497,7 +3497,7 @@ subroutine OutputMassBalance(realization_base)
               global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(:,1)
           enddo
           sum_kg(1,1) = sum_kg(1,1)*FMWH2O
-          sum_kg(2,1) = sum_kg(2,1)*general_fmw(2)
+          sum_kg(2,1) = sum_kg(2,1)*gen_fmw_comp(2)
 
           int_mpi = option%nphase
           call MPI_Reduce(sum_kg(:,1),sum_kg_global(:,1),int_mpi, &
@@ -3532,7 +3532,7 @@ subroutine OutputMassBalance(realization_base)
               global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(:,1)
           enddo
           sum_kg(1,1) = sum_kg(1,1)*FMWH2O
-          sum_kg(2,1) = sum_kg(2,1)*wipp_flow_fmw(2)
+          sum_kg(2,1) = sum_kg(2,1)*wipp_fmw_comp(2)
 
           int_mpi = option%nphase
           call MPI_Reduce(sum_kg(:,1),sum_kg_global(:,1),int_mpi, &

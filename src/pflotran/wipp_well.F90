@@ -1822,7 +1822,7 @@ subroutine PMWellFlux(pm_well,well_up,well_dn,iup,idn,Res,save_flux)
   !
 
   !MAN: will removing this break regression tests?
-  ! use SCO2_Aux_module, only: sco2_fmw => sco2_fmw_comp
+  ! use SCO2_Aux_module, only : sco2_fmw_comp
 
   implicit none
 
