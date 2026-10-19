@@ -4831,6 +4831,8 @@ subroutine THJacobianInternalConn(A,realization,debug,ierr)
     cur_connection_set => cur_connection_set%next
   enddo
 
+  call VecRestoreArray(field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
+
   if (debug%matview_Matrix_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)

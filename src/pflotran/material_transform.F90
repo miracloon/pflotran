@@ -2153,7 +2153,7 @@ subroutine MTransformGetAuxVarVecLoc(material_transform, vec_loc, ivar, &
   ! ----------------------------------
 
   m_transform_auxvars => material_transform%auxvars
-  call VecGetArrayRead(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
+  call VecGetArray(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
   select case(ivar)
   !-----------------------------
@@ -2165,9 +2165,10 @@ subroutine MTransformGetAuxVarVecLoc(material_transform, vec_loc, ivar, &
           vec_loc_p(ghosted_id) = UNINITIALIZED_DOUBLE
         endif
       enddo
+  !-----------------------------
   end select
 
-  call VecRestoreArrayRead(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArray(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine MTransformGetAuxVarVecLoc
 

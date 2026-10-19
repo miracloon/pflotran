@@ -304,7 +304,7 @@ contains
     num_regions = region_list%num_regions
     num_obs = patch%observation_list%num_observations
 
-    call MPI_Allreduce(MPI_IN_PLACE,num_obs,comm_size,MPI_INTEGER,MPI_MAX, &
+    call MPI_Allreduce(MPI_IN_PLACE,num_obs,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                        obs_h5_comm,mpi_err);CHKERRQ(mpi_err)
 
     ! total number of elements in 2D arrays
@@ -361,10 +361,10 @@ contains
     enddo
 
     ! reduce so all processes have the same information
-    call MPI_Allreduce(MPI_IN_PLACE,obs_region_numcells,arr_size,MPI_INTEGER, &
+    call MPI_Allreduce(MPI_IN_PLACE,obs_region_numcells,arr_size,MPIU_INTEGER, &
                        MPI_SUM,obs_h5_comm,mpi_err);CHKERRQ(mpi_err)
 
-    call MPI_Allreduce(MPI_IN_PLACE,obs_region_ids,num_regions,MPI_INTEGER, &
+    call MPI_Allreduce(MPI_IN_PLACE,obs_region_ids,num_regions,MPIU_INTEGER, &
                        MPI_MAX,obs_h5_comm,mpi_err);CHKERRQ(mpi_err)
 
 

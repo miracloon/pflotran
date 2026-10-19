@@ -2203,11 +2203,11 @@ subroutine PMSCO2CheckConvergence(this,snes,it,xnorm,unorm,fnorm, &
               MAX_INDEX/))
     flags(MAX_DOF*sco2_max_states*MAX_INDEX + 1) = converged_well
 
-    mpi_int = MAX_DOF*sco2_max_states*MAX_INDEX+2
+    mpi_int = MAX_DOF*sco2_max_states*MAX_INDEX+1
     call MPI_Allreduce(MPI_IN_PLACE,flags,mpi_int, &
                        MPI_C_BOOL,MPI_LAND,option%mycomm,ierr);CHKERRQ(ierr)
 
-    call MPI_Allreduce(MPI_IN_PLACE,sco2_force_ts_cut,ONE_INTEGER, &
+    call MPI_Allreduce(MPI_IN_PLACE,sco2_force_ts_cut,ONE_INTEGER_MPI, &
                        MPI_C_BOOL,MPI_LOR,option%mycomm,ierr);CHKERRQ(ierr)
 
     this%converged_flag = reshape(flags(1:MAX_DOF*sco2_max_states* &
@@ -2333,7 +2333,7 @@ subroutine PMSCO2CheckConvergence(this,snes,it,xnorm,unorm,fnorm, &
       cur_well => this%pmwell_ptr
       do
         if (.not. associated(cur_well)) exit
-        call MPI_Bcast(cur_well%pressure_controlled,ONE_INTEGER,MPI_C_BOOL, &
+        call MPI_Bcast(cur_well%pressure_controlled,ONE_INTEGER_MPI,MPI_C_BOOL, &
                         cur_well%well_grid%h_rank_id( &
                           cur_well%well_grid%bottom_seg_index), &
                         cur_well%option%mycomm, &

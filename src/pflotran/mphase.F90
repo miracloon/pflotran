@@ -2122,7 +2122,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
                   dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag,co2_sw_itable)
               if (iflag < 1) then
                 ichange = -1
-                return
+                exit
               endif
             endif
             dg = dg / FMWCO2

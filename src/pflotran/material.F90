@@ -2257,7 +2257,7 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar)
   PetscErrorCode :: ierr
 
   material_auxvars => Material%auxvars
-  call VecGetArrayRead(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
+  call VecGetArray(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
   select case(ivar)
     case(VOLUME)
@@ -2323,7 +2323,7 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar)
       endif
   end select
 
-  call VecRestoreArrayRead(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArray(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine MaterialGetAuxVarVecLoc
 

@@ -1629,6 +1629,8 @@ subroutine InitSubsurfGeomechChkInactiveCells(geomech_realization, &
                          nL2G(geomech_local_id)
     if (nint(subsurf_vec_1dof(geomech_local_id)) <= 0) error_found = PETSC_TRUE
   enddo
+  call VecRestoreArray(geomech_realization%geomech_field%press, &
+                       subsurf_vec_1dof, ierr);CHKERRQ(ierr)
   call MPI_Allreduce(MPI_IN_PLACE,error_found,ONE_INTEGER_MPI,MPI_C_BOOL, &
                      MPI_LOR,option%mycomm,ierr);CHKERRQ(ierr)
   if (error_found)then

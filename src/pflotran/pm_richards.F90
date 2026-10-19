@@ -761,7 +761,7 @@ subroutine PMRichardsCheckUpdatePre(this,snes,X,dX,changed,ierr)
     enddo
     call VecRestoreArray(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecRestoreArray(X,X_p,ierr);CHKERRQ(ierr)
-    call VecGetArray(field%flow_r,r_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArray(field%flow_r,r_p,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine PMRichardsCheckUpdatePre
@@ -992,7 +992,7 @@ subroutine PMRichardsCheckConvergence(this,snes,it,xnorm,unorm,fnorm, &
     mpi_int = MAX_INDEX
     ! do not perform an all reduce on cell id as this info is not printed
     ! in parallel
-    call MPI_Allreduce(MPI_IN_PLACE,this%converged_flag,mpi_int,MPI_INTEGER, &
+    call MPI_Allreduce(MPI_IN_PLACE,this%converged_flag,mpi_int,MPI_C_BOOL, &
                        MPI_LAND,option%mycomm,ierr);CHKERRQ(ierr)
     call MPI_Allreduce(MPI_IN_PLACE,this%converged_real,mpi_int, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm, &

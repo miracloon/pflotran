@@ -841,7 +841,7 @@ subroutine PMNWTInitializeTimestep(this)
           ! flag zero_out_borehole to FALSE.
           ! NOTE: Will this work if there are two intrusions? No!
 
-          call VecGetArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecGetArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
           ! compute offset in solution vector for first dof in grid cell
           offset = (local_id-1)*this%params%nspecies
           do idof = 1, this%params%nspecies
@@ -852,7 +852,7 @@ subroutine PMNWTInitializeTimestep(this)
           istart = offset + 1
           iend = offset + this%params%nspecies
           nwt_auxvars(ghosted_id)%total_bulk_conc = xx_p(istart:iend)
-          call VecRestoreArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecRestoreArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
 
           write(this%option%io_buffer,*) local_id
           this%option%io_buffer = "All NWT mass zero'd at cell " // &
@@ -879,7 +879,7 @@ subroutine PMNWTInitializeTimestep(this)
       do i = 1, size(this%params%dirichlet_material_ids)
         if (patch%imat(ghosted_id) == this%params%dirichlet_material_ids(i)) then
           ! Means the current grid cell is one of the dirichlet materials
-          call VecGetArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecGetArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
           ! compute offset in solution vector for first dof in grid cell
           offset = (local_id-1)*this%params%nspecies
           do idof = 1, this%params%nspecies
@@ -890,7 +890,7 @@ subroutine PMNWTInitializeTimestep(this)
           istart = offset + 1
           iend = offset + this%params%nspecies
           nwt_auxvars(ghosted_id)%total_bulk_conc = xx_p(istart:iend)
-          call VecRestoreArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecRestoreArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
         endif
       enddo
     enddo
@@ -931,7 +931,7 @@ subroutine PMNWTInitializeTimestep(this)
           this%option%time < this%params%wm_end_time) then
         if (patch%imat(ghosted_id) == material_property%internal_id) then
           ! Means the current grid cell is in BH_OPEN_UPPER
-          call VecGetArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecGetArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
           ! compute offset in solution vector for first dof in grid cell
           offset = (local_id-1)*this%params%nspecies
           do idof = 1, this%params%nspecies
@@ -942,7 +942,7 @@ subroutine PMNWTInitializeTimestep(this)
           istart = offset + 1
           iend = offset + this%params%nspecies
           nwt_auxvars(ghosted_id)%total_bulk_conc = xx_p(istart:iend)
-          call VecRestoreArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecRestoreArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
         endif
       endif
     enddo
@@ -1026,7 +1026,7 @@ subroutine PMNWTFinalizeTimestep(this)
       do i = 1, size(this%params%dirichlet_material_ids)
         if (patch%imat(ghosted_id) == this%params%dirichlet_material_ids(i)) then
           ! Means the current grid cell is one of the dirichlet materials
-          call VecGetArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecGetArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
           ! compute offset in solution vector for first dof in grid cell
           offset = (local_id-1)*this%params%nspecies
           do idof = 1, this%params%nspecies
@@ -1037,7 +1037,7 @@ subroutine PMNWTFinalizeTimestep(this)
           istart = offset + 1
           iend = offset + this%params%nspecies
           nwt_auxvars(ghosted_id)%total_bulk_conc = xx_p(istart:iend)
-          call VecRestoreArrayRead(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+          call VecRestoreArray(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
         endif
       enddo
     enddo
@@ -1494,12 +1494,13 @@ subroutine PMNWTCheckConvergence(this,snes,it,xnorm,unorm,fnorm,reason,ierr)
 
   mpi_int1 = option%ntrandof*5
   mpi_int2 = option%ntrandof*4
-  call MPI_Allreduce(MPI_IN_PLACE,converged_flag,ONE_INTEGER, &
-                     MPI_C_BOOL,MPI_LAND,option%mycomm,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,converged_flag,ONE_INTEGER_MPI, &
+                     MPI_C_BOOL,MPI_LAND,option%mycomm,ierr);CHKERRQ(ierr)
   call MPI_Allreduce(MPI_IN_PLACE,idof_cnvgd,mpi_int1, &
-                     MPI_C_BOOL,MPI_LAND,option%mycomm,ierr)
+                     MPI_C_BOOL,MPI_LAND,option%mycomm,ierr);CHKERRQ(ierr)
   call MPI_Allreduce(MPI_IN_PLACE,species_max,mpi_int2, &
-                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm, &
+                     ierr);CHKERRQ(ierr)
 
   rUP_str = '  rUP:'
   aUP_str = '  aUP:'
