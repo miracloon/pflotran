@@ -384,16 +384,16 @@ subroutine ERTCalculateMatrix(realization,M,compute_delM,debug)
         coef_up = - coef_up
         coef_dn = - coef_dn
 
-        ! For dM/dcond matrix
-        dcoef_up =   dcond_avg_dn * area
-        dcoef_dn = - dcoef_up               ! - dcond_avg_dn * area
-
         call PUMSetValuesLocal(M,1,ghosted_id_dn-1,1,ghosted_id_dn-1,coef_dn, &
                                ADD_VALUES,ierr);CHKERRQ(ierr)
         call PUMSetValuesLocal(M,1,ghosted_id_dn-1,1,ghosted_id_up-1,coef_up, &
                                ADD_VALUES,ierr);CHKERRQ(ierr)
 
         if (compute_delM) then
+          ! For dM/dcond matrix
+          dcoef_up =   dcond_avg_dn * area
+          dcoef_dn = - dcoef_up               ! - dcond_avg_dn * area
+
           ! For dM/dcond_dn matrix
           num_neighbors_dn = grid%cell_neighbors_local_ghosted(0,local_id_dn)
           ineighbor = FindLocNeighbor(grid%cell_neighbors_local_ghosted      &

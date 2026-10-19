@@ -895,9 +895,9 @@ subroutine InvSubsurfSetupForwardRunLinkage(this)
           trim(StringWrite(size(this%realization%survey%dsim))) // ').')
       endif
     endif
-    if (max_int(1) > patch%grid%nmax) then
+    if (max_int(2) > patch%grid%nmax) then
       call this%driver%PrintErrMsg('A measurement cell ID is &
-        &beyond the maximum cell ID of ' // StringWrite(i))
+        &beyond the maximum cell ID of ' // StringWrite(patch%grid%nmax))
     endif
     ! ensure that all cell ids have been found
     mpi_int = num_measurements
@@ -1649,7 +1649,7 @@ subroutine InvSubsurfPostProcMeasurements(this)
         vec_ptr2(imeasurement)
     enddo
     call VecRestoreArray(dobs_dunknown_vec,vec_ptr,ierr);CHKERRQ(ierr)
-    call VecRestoreArray(dobs_dparam_vec,vec_ptr,ierr);CHKERRQ(ierr)
+    call VecRestoreArray(dobs_dparam_vec,vec_ptr2,ierr);CHKERRQ(ierr)
     call VecDestroy(dist_dobs_dunknown_vec,ierr);CHKERRQ(ierr)
     call VecDestroy(dobs_dunknown_vec,ierr);CHKERRQ(ierr)
     call VecDestroy(dist_dobs_dparam_vec,ierr);CHKERRQ(ierr)
@@ -2393,12 +2393,12 @@ subroutine InvSubsurfFVSetOrigSoln(this)
       call InvAuxBCastVecForCommI(this%inversion_option%forcomm_i, &
                                   solutions(i)%original_saturation_solution, &
                                   this%driver)
-      if (.not.PetscObjectIsNull(solutions(i)%perturbed_solute_solution)) then
+      if (.not.PetscObjectIsNull(solutions(i)%original_solute_solution)) then
 !print *, this%driver%comm%rank, ' Bcast13 forcomm_i'
 !        call MPI_Barrier(this%inversion_option%forcomm_i%communicator, &
 !                         ierr);CHKERRQ(ierr)
         call InvAuxBCastVecForCommI(this%inversion_option%forcomm_i, &
-                                    solutions(i)%perturbed_solute_solution, &
+                                    solutions(i)%original_solute_solution, &
                                     this%driver)
       endif
     enddo
@@ -2504,8 +2504,8 @@ subroutine InvSubsurfFVCalcPartialJs(this,idof_pert)
           call MPI_Send(vec_ptr,vec_size,MPI_DOUBLE_PRECISION, &
                         ZERO_INTEGER_MPI,idof_pert,comm%communicator, &
                         ierr);CHKERRQ(ierr)
-          call VecGetArray(solutions(i)%dsolute_dparameter(idof_pert), &
-                              vec_ptr,ierr);CHKERRQ(ierr)
+          call VecRestoreArray(solutions(i)%dsolute_dparameter(idof_pert), &
+                               vec_ptr,ierr);CHKERRQ(ierr)
         endif
       enddo
     endif

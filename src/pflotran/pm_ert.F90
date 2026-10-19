@@ -581,7 +581,7 @@ recursive subroutine PMERTInitializeRun(this)
         if (patch%imat(ghosted_id) <= 0) cycle
         this%max_tracer_concentration = &
           max(this%max_tracer_concentration, &
-              zflow_auxvars(ZERO_INTEGER,local_id)%conc)
+              zflow_auxvars(ZERO_INTEGER,ghosted_id)%conc)
       enddo
       zflow_auxvars_bcss => patch%aux%ZFlow%auxvars_bc
       boundary_condition => patch%boundary_condition_list%first
@@ -620,7 +620,7 @@ recursive subroutine PMERTInitializeRun(this)
         if (patch%imat(ghosted_id) <= 0) cycle
         this%max_tracer_concentration = &
           max(this%max_tracer_concentration, &
-              rt_auxvars(local_id)%total(ispecies,1))
+              rt_auxvars(ghosted_id)%total(ispecies,1))
       enddo
       boundary_condition => patch%boundary_condition_list%first
       sum_connection = 0
@@ -992,6 +992,7 @@ subroutine PMERTPreSolve(this)
 
   do ghosted_id = 1, grid%ngmax
     local_id = grid%nG2L(ghosted_id)
+    cond_w = UNINITIALIZED_DOUBLE
     dcond_dsat = 0.d0
     dcond_dconc = 0.d0
     if (patch%imat(ghosted_id) <= 0) cycle
