@@ -88,8 +88,6 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
       call InputErrorMsg(input,option,'keyword',error_string)
       call StringToUpper(word)
 
-      ! default type is linear
-      isotherm_rxn%itype = SORPTION_LINEAR
       select case(trim(word))
         case('TYPE')
           call InputReadCard(input,option,word)
@@ -132,10 +130,18 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
           call InputReadDouble(input,option,isotherm_rxn%Langmuir_B)
           call InputErrorMsg(input,option,word,error_string)
           isotherm_rxn%itype = SORPTION_LANGMUIR
+          if (option%use_sc) then
+            sec_cont_isotherm_rxn%Langmuir_B = isotherm_rxn%Langmuir_B
+            sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
+          endif
         case('FREUNDLICH_N')
           call InputReadDouble(input,option,isotherm_rxn%Freundlich_N)
           call InputErrorMsg(input,option,word,error_string)
           isotherm_rxn%itype = SORPTION_FREUNDLICH
+          if (option%use_sc) then
+            sec_cont_isotherm_rxn%Freundlich_N = isotherm_rxn%Freundlich_N
+            sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
+          endif
         case('KD_MINERAL_NAME')
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,word,error_string)
@@ -184,6 +190,7 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
       endif
       option%io_buffer = 'Isotherm KD units must be consistent throughout &
         &input file: ' // trim(word) // ' vs ' // trim(word2)
+      call PrintErrMsg(option)
     else
       isotherm%ikd_units = ikd_units
     endif

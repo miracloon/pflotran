@@ -2243,6 +2243,8 @@ subroutine ReactionDBInitBasis(reaction,option)
           ! extract the water species
           call ReactionEquationRemoveSpecies(reaction_equation,h2oname, &
                                              tempreal,option)
+          mineral%mnrlh2oid(imnrl) = 0
+          mineral%mnrlh2ostoich(imnrl) = 0.d0
           if (Initialized(tempreal)) then
             mineral%mnrlh2oid(imnrl) = h2o_id
             mineral%mnrlh2ostoich(imnrl) = tempreal
@@ -2250,8 +2252,6 @@ subroutine ReactionDBInitBasis(reaction,option)
           ! fill the arrays
           mineral%mnrlspecid(:,imnrl) = 0
           mineral%mnrlstoich(:,imnrl) = 0.d0
-          mineral%mnrlh2oid(imnrl) = 0
-          mineral%mnrlh2ostoich(imnrl) = 0.d0
           ispec = 0
           do i = 1, reaction_equation%nspec
             species_name = reaction_equation%spec_name(i)

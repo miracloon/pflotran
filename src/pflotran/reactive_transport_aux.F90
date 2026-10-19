@@ -288,6 +288,10 @@ recursive subroutine RTAuxVarInit(auxvar,reaction, &
 
       allocate(auxvar%kinsrfcplx_conc_kp1(surface_complexation%nkinsrfcplx,1))
       auxvar%kinsrfcplx_conc_kp1 = 0.d0
+
+      allocate(auxvar%kinsrfcplx_free_site_conc( &
+                 surface_complexation%nkinsrfcplxrxn))
+      auxvar%kinsrfcplx_free_site_conc = 0.d0
     endif
     if (surface_complexation%nkinmrsrfcplxrxn > 0) then
       ! the zeroth entry here stores the equilibrium concentration used in the

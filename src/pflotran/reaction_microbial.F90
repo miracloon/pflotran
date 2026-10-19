@@ -100,7 +100,7 @@ subroutine ReactionMicrobReadMicrobial(microbial,input,option)
       case('RATE_CONSTANT')
         call InputReadDouble(input,option,microbial_rxn%rate_constant)
         call InputErrorMsg(input,option,word,'CHEMISTRY,MICROBIAL_REACTION')
-        call InputReadAndConvertUnits(input,microbial_rxn%activation_energy, &
+        call InputReadAndConvertUnits(input,microbial_rxn%rate_constant, &
                      '1/sec|mol/L-sec', &
                      'CHEMISTRY,MICROBIAL_REACTION,RATE_CONSTANT',option)
       case('ACTIVATION_ENERGY')

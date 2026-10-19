@@ -677,20 +677,12 @@ subroutine RTComputeMassBalance(realization,num_cells,max_size,sum_mol,cell_ids)
           reaction%mineral%kinmnrlstoich(i,imnrl) * tempreal
       enddo
       sum_mol_by_mnrl(imnrl) = sum_mol_by_mnrl(imnrl) + tempreal
-      if (reaction%print%total_mass_kg) then
-        sum_mol_by_mnrl(imnrl) = sum_mol_by_mnrl(imnrl) * &
-          reaction%mineral%kinmnrl_molar_wt(imnrl) * 1.d-3
-      endif
     enddo
 
     ! immobile mass
     do i = 1, reaction%immobile%nimmobile
       sum_mol_by_im(i) = sum_mol_by_im(i) + &
           rt_auxvars(ghosted_id)%immobile(i) * volume
-      if (reaction%print%total_mass_kg) then
-        sum_mol_by_im(i) = sum_mol_by_im(i) * &
-          reaction%immobile%list%molar_weight
-      endif
     enddo
 
     ! gas mass
@@ -707,12 +699,6 @@ subroutine RTComputeMassBalance(realization,num_cells,max_size,sum_mol,cell_ids)
           ! m^3 gas
           (1.d0-liquid_saturation) * porosity * volume
       enddo
-      if (reaction%print%total_mass_kg) then
-         sum_mol_by_gas(1:reaction%gas%nactive_gas) = &
-           sum_mol_by_gas(1:reaction%gas%nactive_gas) * &
-                                  ! 1.d-3 to convert g -> kg
-           reaction%gas%actmolarwt * 1.d-3
-      endif
     endif
     ! Secondary continuum contribution
     if (option%use_sc) then
@@ -761,19 +747,11 @@ subroutine RTComputeMassBalance(realization,num_cells,max_size,sum_mol,cell_ids)
                        reaction%mineral%kinmnrlstoich(i,imnrl) * tempreal
                 enddo
                 sum_mol_by_mnrl(imnrl) = sum_mol_by_mnrl(imnrl) + tempreal
-                if (reaction%print%total_mass_kg) then
-                  sum_mol_by_mnrl(imnrl) = sum_mol_by_mnrl(imnrl) * &
-                       reaction%mineral%kinmnrl_molar_wt(imnrl) * 1.d-3
-                endif
               enddo
 
               ! immobile
               do i = 1, reaction%immobile%nimmobile
                 sum_mol_by_im(i) = sum_mol_by_im(i) + rtsec%immobile(i) * (Vsec*wj)
-                if (reaction%print%total_mass_kg) then
-                  sum_mol_by_im(i) = sum_mol_by_im(i) * &
-                       reaction%immobile%list%molar_weight * 1.d-3
-                endif
               enddo
 
               ! gas
@@ -806,6 +784,19 @@ subroutine RTComputeMassBalance(realization,num_cells,max_size,sum_mol,cell_ids)
       reaction%primary_spec_molar_wt(:) * 1.d-3
     sum_mol_gas(1:naqcomp) = sum_mol_gas(1:naqcomp) * &
       reaction%primary_spec_molar_wt(:) * 1.d-3
+    do imnrl = 1, reaction%mineral%nkinmnrl
+      sum_mol_by_mnrl(imnrl) = sum_mol_by_mnrl(imnrl) * &
+        reaction%mineral%kinmnrl_molar_wt(imnrl) * 1.d-3
+    enddo
+    do i = 1, reaction%immobile%nimmobile
+      sum_mol_by_im(i) = sum_mol_by_im(i) * &
+        reaction%immobile%list%molar_weight * 1.d-3
+    enddo
+    if (reaction%gas%nactive_gas > 0) then
+      sum_mol_by_gas(1:reaction%gas%nactive_gas) = &
+        sum_mol_by_gas(1:reaction%gas%nactive_gas) * &
+        reaction%gas%actmolarwt * 1.d-3
+    endif
   endif
 
   sum_mol_tot = sum_mol_aq + sum_mol_sb + sum_mol_mnrl + sum_mol_gas
@@ -4507,7 +4498,7 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
             call VecRestoreArray(field%work,vec_p,ierr);CHKERRQ(ierr)
 
             call DiscretizationGlobalToNatural(realization%discretization, field%work, &
-                                        natural_vec, NTRANDOF)
+                                        natural_vec, ONEDOF)
             write(string,*) icomp
             dataset_name = 'Kinetic_sorption_' // trim(adjustl(string)) // 'comp_'
             write(string,*) irxn
@@ -4547,6 +4538,8 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
       enddo
     endif
   enddo
+
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
 
 end subroutine RTCheckpointKineticSorptionHDF5
 

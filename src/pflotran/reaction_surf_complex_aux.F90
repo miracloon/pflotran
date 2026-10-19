@@ -404,9 +404,6 @@ subroutine ReactionSrfCplxMapMastCplxToRxn(surface_complexation,rxn_type)
   PetscInt, allocatable :: srfcplx_to_rxnsrfcplx(:)
   PetscInt :: isrfcplx, isrfcplx_in_rxn
 
-  isrfcplx = ReactionSrfCplxNumSrfCplxInRxn(surface_complexation,rxn_type)
-  allocate(srfcplx_to_rxnsrfcplx(isrfcplx))
-
   ! flag the master list
   cur_srfcplx => surface_complexation%complex_list
   isrfcplx = 0

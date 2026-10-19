@@ -1687,7 +1687,7 @@ subroutine ReactionAuxTotalCanBeNegative(reaction)
   do icplx = 1, reaction%neqcplx
     do i = 1, reaction%eqcplxspecid(0,icplx)
       icomp = reaction%eqcplxspecid(i,icplx)
-      if (reaction%eqcplxspecid(i,icplx) < 0) then
+      if (reaction%eqcplxstoich(i,icplx) < 0.d0) then
         reaction%primary_total_can_be_negative(icomp) = PETSC_TRUE
       endif
     enddo

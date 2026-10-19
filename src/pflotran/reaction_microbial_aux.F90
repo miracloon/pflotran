@@ -296,8 +296,10 @@ function ReactionMicrobGetBiomassCount(microbial)
   ReactionMicrobGetBiomassCount = 0
   microbial_rxn => microbial%microbial_rxn_list
   do
-    if (.not.associated(microbial_rxn%biomass)) exit
-    ReactionMicrobGetBiomassCount = ReactionMicrobGetBiomassCount + 1
+    if (.not.associated(microbial_rxn)) exit
+    if (associated(microbial_rxn%biomass)) then
+      ReactionMicrobGetBiomassCount = ReactionMicrobGetBiomassCount + 1
+    endif
     microbial_rxn => microbial_rxn%next
   enddo
 

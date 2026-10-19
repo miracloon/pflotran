@@ -223,7 +223,9 @@ subroutine SecondaryRTResJacMulti_NP(sec_transport_vars,auxvar, &
     endif
     total_upd(:,i) = rt_auxvar%total(:,1)           ! phase 1 liquid
     dtotal(:,:,i) = rt_auxvar%aqueous%dtotal(:,:,1) ! phase 1 liquid
-    mc_sec_molal(:, i) = rt_auxvar%sec_molal(:)
+    if (reaction%neqcplx > 0) then
+      mc_sec_molal(:, i) = rt_auxvar%sec_molal(:)
+    endif
     if (reaction%neqsorb > 0) then
       total_sorb_upd(:,i) = rt_auxvar%total_sorb_eq(:)
       dtotal_sorb_upd(:,:,i) = rt_auxvar%dtotal_sorb_eq(:,:)
@@ -754,7 +756,7 @@ subroutine SecondaryRTResJacMulti_NP(sec_transport_vars,auxvar, &
 
   b_m = porosity*tortuosity/dm_plus(ngcells)*area(ngcells)*inv_D_M ! in m·s/mol
 
-  dCsec_dCprim = b_m*dtotal_prim
+  dCsec_dCprim = matmul(b_m,dtotal_prim)
 
   ! Calculate the dervative of outer matrix node total with respect to the
   ! primary node concentration

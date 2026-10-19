@@ -303,6 +303,7 @@ function ReactionDBOverrideSpecies(mass_action_override,option)
   PetscErrorCode :: ierr
 
   ierr = INPUT_ERROR_NONE
+  reaction_string = mass_action_override%reaction_string
 
   ! read the number of aqueous species in mineral rxn
   call InputReadInt(reaction_string,option,num_species_in_rxn,ierr)

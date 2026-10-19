@@ -1233,7 +1233,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
 
   do k = 1, nphase
     a_m(:,:,k) = pordiff(k)/dm_plus(ngcells)*area(ngcells)*inv_D_M ! in L/kg  For log formulation, L/mol
-    dCsec_dCprim = dCsec_dCprim + a_m(:,:,k)*dtotal_prim(:,:,k)
+    dCsec_dCprim = dCsec_dCprim + matmul(a_m(:,:,k),dtotal_prim(:,:,k))
   enddo
 
   ! Calculate the dervative of outer matrix node total with respect to the
@@ -1267,9 +1267,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
       if (reaction%gas%nactive_gas > 0) then
         RT = IDEAL_GAS_CONSTANT * (global_auxvar%temp + T273K) * 1.d3
         do igas = 1, reaction%gas%nactive_gas
-          do j = 1, ncomp
+          do j = 1, reaction%gas%acteqspecid(0,igas)
             jcomp = reaction%gas%acteqspecid(j,igas)
-            do l = 1, ncomp
+            do l = 1, reaction%gas%acteqspecid(0,igas)
               lcomp = reaction%gas%acteqspecid(l,igas)
               dPsisec_dCprim(jcomp,lcomp,2) = dPsisec_dCprim(jcomp,lcomp,2) + &
                 reaction%gas%acteqstoich(l,igas) * reaction%gas%acteqstoich(j,igas) * &
@@ -1308,9 +1308,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     if (reaction%gas%nactive_gas > 0) then
       RT = IDEAL_GAS_CONSTANT * (global_auxvar%temp + T273K) * 1.d3
       do igas = 1, reaction%gas%nactive_gas
-        do j = 1, ncomp
+        do j = 1, reaction%gas%acteqspecid(0,igas)
           jcomp = reaction%gas%acteqspecid(j,igas)
-          do l = 1, ncomp
+          do l = 1, reaction%gas%acteqspecid(0,igas)
             lcomp = reaction%gas%acteqspecid(l,igas)
             dPsisec_dCprim(jcomp,lcomp,2) = dPsisec_dCprim(jcomp,lcomp,2) + &
               reaction%gas%acteqstoich(l,igas) * reaction%gas%acteqstoich(j,igas) * &

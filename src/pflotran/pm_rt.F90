@@ -2615,8 +2615,8 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 
     if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
         .not.option%transport%no_checkpoint_kinetic_sorption) then
-      ! PETSC_TRUE flag indicates write to file
-      call RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, PETSC_TRUE)
+      ! PETSC_FALSE flag indicates read from file
+      call RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, PETSC_FALSE)
     endif
 
     ! auxiliary data for reactions (e.g. cumulative mass)

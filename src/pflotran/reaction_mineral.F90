@@ -1111,7 +1111,7 @@ subroutine ReactionMnrlSetup(reaction,option)
           error_found = PETSC_TRUE
           option%io_buffer = 'A specific surface area must be defined in &
             &in the MINERAL_KINETICS block for mineral "' // &
-            trim(mineral%mineral_names(imnrl)) // '".'
+            trim(mineral%kinmnrl_names(imnrl)) // '".'
           call PrintMsg(option)
         endif
     end select
@@ -1460,11 +1460,16 @@ subroutine ReactionMnrlKineticRateTST(Res,Jac, &
           ln_numerator = &
             mineral%kinmnrl_pref_alpha(ipref_species,ipref,imnrl)* &
             ln_spec_act
-          ln_denominator = log(1.d0 + &
-            exp(log(mineral%kinmnrl_pref_atten_coef(ipref_species, &
-                                                    ipref,imnrl)) + &
-                mineral%kinmnrl_pref_beta(ipref_species,ipref,imnrl)* &
-                ln_spec_act))
+          if (mineral%kinmnrl_pref_atten_coef(ipref_species, &
+                                              ipref,imnrl) > 0.d0) then
+            ln_denominator = log(1.d0 + &
+              exp(log(mineral%kinmnrl_pref_atten_coef(ipref_species, &
+                                                      ipref,imnrl)) + &
+                  mineral%kinmnrl_pref_beta(ipref_species,ipref,imnrl)* &
+                  ln_spec_act))
+          else
+            ln_denominator = 0.d0
+          endif
           ln_prefactor = ln_prefactor + ln_numerator
           ln_prefactor = ln_prefactor - ln_denominator
           ln_prefactor_spec(ipref_species,ipref) = &
@@ -2094,7 +2099,7 @@ subroutine ReactionMnrlUpdateSpecSurfArea(reaction,rt_auxvar, &
                 ((mineral%kinmnrl_armor_crit_vol_frac(imnrl) &
                 - rt_auxvar%mnrl_volfrac(imnrl_armor))/ &
                 mineral%kinmnrl_armor_crit_vol_frac(imnrl))** &
-                mineral%kinmnrl_surf_area_vol_frac_pwr(imnrl)
+                mineral%kinmnrl_armor_pwr(imnrl)
             else
               rt_auxvar%mnrl_area(imnrl) = &
                 rt_auxvar%mnrl_area0(imnrl)

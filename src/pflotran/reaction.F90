@@ -4216,8 +4216,8 @@ subroutine RReact(istep,guess,rt_auxvar,global_auxvar,material_auxvar, &
     last_5_norms(2:5) = last_5_norms(1:4)
     last_5_norms(1) = two_norm_r
     if (num_iterations == 1) two_norm_r0 = two_norm_r
-    rel_residual = two_norm_r/two_norm_r0
     if (maxval(abs(residual)) < reaction%max_residual_tolerance) exit
+    rel_residual = two_norm_r/two_norm_r0
     if (rel_residual < reaction%max_rel_residual_tolerance) exit
 
     conc(1:naqcomp) = rt_auxvar%pri_molal(1:naqcomp)
