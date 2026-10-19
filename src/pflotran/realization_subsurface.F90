@@ -798,6 +798,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
           &not been set under THERMAL_CHARACTERISTIC_CURVES "' // &
           trim(thermal_cc%name) // '" intended for material ID #'// &
           trim(adjustl(mat_string)) // '. '
+        call PrintErrMsg(option)
       endif
       call CharCurvesThermalAddToList(thermal_cc, &
         realization%characteristic_curves_thermal)

@@ -818,7 +818,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call InputReadCard(input,option,word2)
         if (.not.InputError(input)) then
           if (StringCompareIgnoreCase(word2,'PER_VOLUME')) then
-            word = trim(word) // 'PER_VOLUME'
+            word = trim(word) // '_PER_VOLUME'
           else
             input%ierr = INPUT_ERROR_DEFAULT
             call InputErrorMsg(input,option,'optional keyword', &
@@ -2001,6 +2001,7 @@ subroutine OutputPrintCouplers(realization_base,debug,istep)
           vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvars(iaux),iconn)
         enddo
       endif
+      call VecRestoreArray(field%work,vec_ptr,ierr);CHKERRQ(ierr)
 
       if (istep > 0) then
         write(string,*) istep
@@ -2452,11 +2453,13 @@ subroutine OutputFindNaNOrInfInVec(vec,grid,option)
      if (PetscIsInfOrNanReal(vec_p(i))) then
 !    if (ieee_is_nan(vec_p(i)) .or. .not.ieee_is_finite(vec_p(i))) then
       local_count = local_count + 1
-      icell = int(float(i-1)/float(block_size))+1
-      iarray(1,local_count) = grid%nG2A(grid%nL2G(icell))
-      idof = i-(icell-1)*block_size
-!      if (ieee_is_nan(vec_p(i))) idof = -idof
-      iarray(2,local_count) = idof
+      if (local_count <= max_number_to_print) then
+        icell = int(float(i-1)/float(block_size))+1
+        iarray(1,local_count) = grid%nG2A(grid%nL2G(icell))
+        idof = i-(icell-1)*block_size
+!        if (ieee_is_nan(vec_p(i))) idof = -idof
+        iarray(2,local_count) = idof
+      endif
     endif
   enddo
   call VecRestoreArrayRead(vec,vec_p,ierr);CHKERRQ(ierr)

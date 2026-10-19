@@ -787,7 +787,6 @@ subroutine FactorySubsurfReadRequiredCards(simulation,input)
         call InputPushCard(input,card,option)
         call InputReadInt(input,option,option%hdf5_write_group_size)
         call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-        call InputSkipToEnd(input,option,'HDF5_WRITE_GROUP_SIZE')
 
       case('HDF5_READ_GROUP_SIZE')
         call InputPushCard(input,card,option)

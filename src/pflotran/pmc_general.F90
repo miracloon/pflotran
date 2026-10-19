@@ -118,6 +118,7 @@ recursive subroutine PMCGeneralRunToTime(this,sync_time,stop_flag)
   if (stop_flag /= TS_STOP_END_SIMULATION .or. &
       this%evaluate_at_end_of_simulation) then
     call this%PrintHeader()
+    ierr = TS_CONTINUE
     ! must use ierr here due to 32-/64-bit integer issues
     select type(pm_=>this%pm)
       class is(pm_auxiliary_type)
@@ -130,7 +131,7 @@ recursive subroutine PMCGeneralRunToTime(this,sync_time,stop_flag)
         call pm_%Update(sync_time,ierr)
       class is (pm_unittest_type)
         call pm_%RunUnitTests(sync_time,ierr)
-        local_stop_flag = TS_STOP_END_SIMULATION
+        ierr = TS_STOP_END_SIMULATION
         this%option%io_buffer = 'Unit tests completed, stopping simulation.'
         call PrintMsg(this%option)
       class default

@@ -186,7 +186,7 @@ subroutine CommCreateProcessGroups(parent_comm,num_groups, &
   offset = 0
   do igroup = 1, num_groups
     delta = local_commsize
-    if (igroup < remainder) delta = delta + 1
+    if (igroup <= remainder) delta = delta + 1
     if (parent_comm%rank >= offset .and. &
         parent_comm%rank < offset + delta) exit
     offset = offset + delta

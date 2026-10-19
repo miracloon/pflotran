@@ -2237,7 +2237,7 @@ subroutine InterfaceApproxWithDeriv(v_up, v_dn, dv_up, dv_dn, dv_up2dn, &
   else
     v_interf = v_dn
     dv_interf_dv_up = 0.d0
-    dv_interf_dv_up = dv_dn
+    dv_interf_dv_dn = dv_dn
   endif
 
   select case (approx_type)
@@ -2466,10 +2466,9 @@ subroutine CalcParallelSUM2(option,rank_list,local_val,global_sum)
       else
         temp_array(1) = local_val(j)
         do m = 2,num_ranks
-          call MPI_Recv(local_val(j),ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+          call MPI_Recv(temp_array(m),ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                         rank_list(m),TAG,option%mycomm,MPI_STATUS_IGNORE, &
                         ierr);CHKERRQ(ierr)
-          temp_array(m) = local_val(j)
         enddo
         global_sum(j) = sum(temp_array)
       endif

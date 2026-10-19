@@ -903,7 +903,9 @@ subroutine InputReadCard(input, option, word, push_to_log)
   call InputReadWord(input,option,word,PETSC_TRUE)
 
   if (present(push_to_log)) then
-    call InputPushCard(input,word,option)
+    if (push_to_log) then
+      call InputPushCard(input,word,option)
+    endif
   else
     call InputPushCard(input,word,option)
   endif
@@ -1062,7 +1064,8 @@ subroutine InputPushBlock2(input,block_name,option)
   option%keyword_log = trim(string)
 
   option%keyword_block_count = option%keyword_block_count + 1
-  if (option%keyword_block_count > 0) then
+  if (option%keyword_block_count > 0 .and. &
+      option%keyword_block_count <= size(option%keyword_block_map)) then
     option%keyword_block_map(option%keyword_block_count) = &
       len_trim(option%keyword_log)
   endif

@@ -427,17 +427,22 @@ subroutine HDF5ReadIndices(option,file_id,dataset_name,dataset_size, &
     call PetscLogEventEnd(logging%event_h5dread_f,ierr);CHKERRQ(ierr)
     indices(-1:iend-istart) = indices_i4(-1:iend-istart)
     deallocate(indices_i4)
+    call h5pclose_f(prop_id,hdf5_err)
+    call h5sclose_f(memory_space_id,hdf5_err)
   endif
 
-  call h5pclose_f(prop_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call HDF5DatasetClose(data_set_id,option)
 
-  cell_id_bounds(1) = minval(indices(1:iend-istart))
-  cell_id_bounds(2) = maxval(indices(1:iend-istart))
+  if (istart < num_data_in_file) then
+    cell_id_bounds(1) = minval(indices(1:iend-istart))
+    cell_id_bounds(2) = maxval(indices(1:iend-istart))
+  else
+    cell_id_bounds(1) = dataset_size
+    cell_id_bounds(2) = 1
+  endif
   cell_id_bounds(1) = -cell_id_bounds(1)
-  call MPI_Allreduce(MPI_IN_PLACE,cell_id_bounds,TWO_INTEGER_MPI,MPI_INTEGER, &
+  call MPI_Allreduce(MPI_IN_PLACE,cell_id_bounds,TWO_INTEGER_MPI,MPIU_INTEGER, &
                      MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
   cell_id_bounds(1) = -cell_id_bounds(1)
   if (cell_id_bounds(1) < 1 .or. cell_id_bounds(2) > dataset_size) then
@@ -1635,7 +1640,7 @@ subroutine HDF5ReadCellIndexedRealArrayGM(geomech_realization,global_vec,filenam
     option%io_buffer = 'Reading dataset: ' // trim(string)
   endif
   call PrintMsg(option)
-  call HDF5ReadArrayGM(discretization,grid,option,file_id,string,grid%nmax_node, &
+  call HDF5ReadArrayGM(discretization,grid,option,grp_id,string,grid%nmax_node, &
                      indices,global_vec,H5T_NATIVE_DOUBLE)
   call PetscTime(tend,ierr);CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to read real array")') &

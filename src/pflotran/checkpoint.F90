@@ -374,7 +374,7 @@ subroutine CheckpointFlowProcessModelBinary(viewer,realization)
     ! that indicates what phases are present, as well as the 'var' vector
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(RICHARDS_MODE,RICHARDS_TS_MODE,ZFLOW_MODE,IMMISCIBLE_MODE)
+      case(RICHARDS_MODE,RICHARDS_TS_MODE,ZFLOW_MODE,IMMISCIBLE_MODE,WF_MODE)
       case(PNF_MODE)
         option%io_buffer = 'Checkpointing must be implemented for PNF mode'
         call PrintErrMsg(option)
@@ -475,7 +475,7 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
     call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
 
     select case(option%iflowmode)
-      case(RICHARDS_MODE,RICHARDS_TS_MODE,ZFLOW_MODE,IMMISCIBLE_MODE)
+      case(RICHARDS_MODE,RICHARDS_TS_MODE,ZFLOW_MODE,IMMISCIBLE_MODE,WF_MODE)
       case default
         call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
@@ -492,7 +492,6 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
                                       field%work_loc,ONEDOF)
         call SCO2SetSlminVecLoc(realization%patch%aux%sco2, &
                                 realization%patch%grid, field%work_loc)
-        call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
     end select
 
     call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)

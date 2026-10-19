@@ -337,6 +337,11 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list) !
     ! Is the waypoint to be deleted is the first waypoint?
     if (Equal(waypoint%time,obsolete_waypoint%time)) then
       waypoint_list%first => waypoint%next
+      if (associated(waypoint_list%first)) then
+        nullify(waypoint_list%first%prev)
+      else
+        nullify(waypoint_list%last)
+      endif
       call WaypointDestroy(waypoint)
       waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
       return
@@ -348,6 +353,11 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list) !
         if (associated(waypoint)) then
           if (dabs(waypoint%time-obsolete_waypoint%time) < 1.d-10) then
             prev_waypoint%next => waypoint%next
+            if (associated(waypoint%next)) then
+              waypoint%next%prev => prev_waypoint
+            else
+              waypoint_list%last => prev_waypoint
+            endif
             call WaypointDestroy(waypoint)
             waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
             return
@@ -384,7 +394,9 @@ subroutine WaypointListFillIn(waypoint_list,option)
   type(option_type) :: option
 
   type(waypoint_type), pointer :: waypoint, prev_waypoint
-  PetscReal :: dt_max = UNINITIALIZED_DOUBLE
+  PetscReal :: dt_max
+
+  dt_max = UNINITIALIZED_DOUBLE
 
   ! find first value of dt_max > 0.d0 in list
   waypoint => waypoint_list%first
@@ -792,6 +804,12 @@ subroutine WaypointListFindDuplicateTimes(list,option)
           next_waypoint => cur_waypoint%next%next
           call WaypointMerge(cur_waypoint,cur_waypoint%next)
           cur_waypoint%next => next_waypoint
+          if (associated(next_waypoint)) then
+            next_waypoint%prev => cur_waypoint
+          else
+            list%last => cur_waypoint
+          endif
+          list%num_waypoints = list%num_waypoints - 1
           duplicate_removed = PETSC_TRUE
         endif
       endif
@@ -847,9 +865,11 @@ function WaypointListCopy(list)
     new_waypoint => WaypointCreate(cur_waypoint)
     if (associated(prev_new_waypoint)) then
       prev_new_waypoint%next => new_waypoint
+      new_waypoint%prev => prev_new_waypoint
     else
       new_list%first => new_waypoint
     endif
+    new_list%last => new_waypoint
     new_list%num_waypoints = new_list%num_waypoints + 1
     prev_new_waypoint => new_waypoint
     nullify(new_waypoint)

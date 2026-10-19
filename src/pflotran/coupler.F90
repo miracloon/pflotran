@@ -156,16 +156,16 @@ function CouplerCreateFromCoupler(coupler)
   new_coupler%iface = coupler%iface
 
   ! these must remain null
-  nullify(coupler%flow_condition)
-  nullify(coupler%tran_condition)
-  nullify(coupler%geop_condition)
-  nullify(coupler%region)
-  nullify(coupler%flow_aux_mapping)
-  nullify(coupler%flow_bc_type)
-  nullify(coupler%flow_aux_int_var)
-  nullify(coupler%flow_aux_real_var)
-  nullify(coupler%connection_set)
-  nullify(coupler%next)
+  nullify(new_coupler%flow_condition)
+  nullify(new_coupler%tran_condition)
+  nullify(new_coupler%geop_condition)
+  nullify(new_coupler%region)
+  nullify(new_coupler%flow_aux_mapping)
+  nullify(new_coupler%flow_bc_type)
+  nullify(new_coupler%flow_aux_int_var)
+  nullify(new_coupler%flow_aux_real_var)
+  nullify(new_coupler%connection_set)
+  nullify(new_coupler%next)
 
   CouplerCreateFromCoupler => new_coupler
 
