@@ -678,7 +678,8 @@ subroutine SCO2ComputeComponentMassBalance(realization,num_cells,num_comp, &
 
     if (patch%imat(ghosted_id) <= 0) cycle
     volume = material_auxvars(ghosted_id)%volume
-
+    Srg = patch%characteristic_curves_array(patch%cc_id(ghosted_id))% &
+          ptr%gas_rel_perm_function%Srg
 
     do iphase = 1,num_phase
       do icomp = 1,num_comp
@@ -689,8 +690,6 @@ subroutine SCO2ComputeComponentMassBalance(realization,num_cells,num_comp, &
         endif
         if (iphase == option%trapped_gas_phase) then
           ! SPE11 definition of "immobile gas"
-          Srg = patch%characteristic_curves_array(patch%cc_id(ghosted_id))% &
-                ptr%gas_rel_perm_function%Srg
           if (sco2_auxvars(ZERO_INTEGER,ghosted_id)% &
               sat(option%gas_phase) <= Srg) then
             sum_kg(icomp,iphase) = sum_kg(icomp,iphase) + &

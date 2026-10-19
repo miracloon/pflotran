@@ -643,7 +643,7 @@ subroutine TCFLinearConductivity(this,liquid_saturation,temperature,porosity, &
     tempreal = liquid_saturation * &
                (this%kT_wet - this%kT_dry)
     thermal_conductivity = this%kT_dry + tempreal
-    dkT_dsatl = 0.5d0 * tempreal / liquid_saturation
+    dkT_dsatl = this%kT_wet - this%kT_dry
   else
     thermal_conductivity = this%kT_dry
     dkT_dsatl = 0.d0
@@ -1811,8 +1811,8 @@ subroutine TCFCompositeConductivity(this,liquid_saturation, &
       thermal_conductivity = thermal_conductivity + &
                              scaling(i)*tmpkT(i)*this%kTf(i,i)
 
-      dkT_dtemp = dkT_dtemp + scaling(i)*tmpdkT_dsatl(i)*this%kTf(i,i)
-      dkT_dsatl = dkT_dsatl + scaling(i)*tmpdkT_dtemp(i)*this%kTf(i,i)
+      dkT_dtemp = dkT_dtemp + scaling(i)*tmpdkT_dtemp(i)*this%kTf(i,i)
+      dkT_dsatl = dkT_dsatl + scaling(i)*tmpdkT_dsatl(i)*this%kTf(i,i)
     end select
   enddo
 

@@ -1233,10 +1233,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                            (one_over_dw - &
                             cell_pressure * one_over_dw * one_over_dw * &
                             gen_auxvar%d%denl_pl)
-      gen_auxvar%d%Ul_T = hw_dT - &
-                          (one_over_dw - &
-                           cell_pressure * one_over_dw * one_over_dw * &
-                           gen_auxvar%d%denl_T)
+      gen_auxvar%d%Ul_T = hw_dT + &
+                          cell_pressure * one_over_dw * one_over_dw * &
+                          gen_auxvar%d%denl_T
       gen_auxvar%d%Hl_pl = hw_dp * 1.d-6
       gen_auxvar%d%Hl_T = hw_dT * 1.d-6
       gen_auxvar%d%Ul_T = gen_auxvar%d%Ul_T * 1.d-6 ! J/kmol-C -> MJ/kmol-C
@@ -1254,10 +1253,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
             (one_over_dw - &
             cell_pressure * one_over_dw * one_over_dw * &
             gen_auxvar%d%denl_pl)
-       gen_auxvar%d%Ul_T = hw_dT - &
-            (one_over_dw - &
+       gen_auxvar%d%Ul_T = hw_dT + &
             cell_pressure * one_over_dw * one_over_dw * &
-            gen_auxvar%d%denl_T)
+            gen_auxvar%d%denl_T
        gen_auxvar%d%Hl_pl = hw_dp * 1.d-6
        gen_auxvar%d%Hl_T = hw_dT * 1.d-6
        gen_auxvar%d%Ul_T = gen_auxvar%d%Ul_T * 1.d-6 ! J/kmol-C -> MJ/kmol-C

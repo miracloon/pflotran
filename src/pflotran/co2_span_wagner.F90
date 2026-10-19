@@ -1271,11 +1271,11 @@ function dpsiddel(i,del2,tau2)
       tmp1=4.d0*capb(i)*aco2(i)*(aco2(i)-1.d0)*(((del2-1.d0) &
       **2)**(aco2(i)-2.d0))
 
-      tmp1=tmp1+(2.d0*capa(i)*capa(i)*((1.d0/beta(i))**2)* &
-      ((((del2-1.d0)**2)**((1.d0/(2.d0*beta(i)))-1.d0))**2))
+      tmp1=tmp1+(2.d0*capa(i)*capa(i)*((1.d0/beta(i+5))**2)* &
+      ((((del2-1.d0)**2)**((1.d0/(2.d0*beta(i+5)))-1.d0))**2))
 
-      tmp1=tmp1+capa(i)*theta1*(4.d0/beta(i))*((1.d0/(2.d0*beta(i))) &
-      -1.d0)*(((del2-1.d0)**2)**((1.d0/(2.d0*beta(i)))-2.d0))
+      tmp1=tmp1+capa(i)*theta1*(4.d0/beta(i+5))*((1.d0/(2.d0*beta(i+5))) &
+      -1.d0)*(((del2-1.d0)**2)**((1.d0/(2.d0*beta(i+5)))-2.d0))
 
       tmp1=tmp1*((del2-1.d0)**2.d0)
 
@@ -1358,8 +1358,8 @@ function dpsiddel(i,del2,tau2)
       capdel1=capdel(i,del2,tau2)
       theta1=theta(i,del2,tau2)
       ddd=dcapdelddel(i,del2,tau2)*(del2-1.d0)
-      tmp3=-capa(i)*bco2(i)*(2.d0/beta(i))*(capdel1**(bco2(i)-1.d0))* &
-      (del2-1.d0)*(((del2-1.d0)**2)**((1.d0/(2.d0*beta(i)))-1.d0))
+      tmp3=-capa(i)*bco2(i)*(2.d0/beta(i+5))*(capdel1**(bco2(i)-1.d0))* &
+      (del2-1.d0)*(((del2-1.d0)**2)**((1.d0/(2.d0*beta(i+5)))-1.d0))
 
       tmp3=tmp3-(2.d0*theta1*bco2(i)*(bco2(i)-1.d0)*(capdel1** &
       (bco2(i)-2.d0))*ddd)

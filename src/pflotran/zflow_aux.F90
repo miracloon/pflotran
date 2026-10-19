@@ -388,6 +388,7 @@ subroutine ZFlowAuxVarPerturb(x,zflow_auxvar,global_auxvar, &
   option%iflag = ZFLOW_UPDATE_FOR_DERIVATIVE
   do idof = 1, option%nflowdof
     pert = x(idof)*zflow_rel_pert+zflow_min_pert(idof)
+    if (dabs(pert) < 1.d-40) pert = zflow_min_pert(idof)
     zflow_auxvar(idof)%pert = pert
     x_pert(1:option%nflowdof) = x
     x_pert(idof) = x(idof) + pert

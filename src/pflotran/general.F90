@@ -1111,7 +1111,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state,update_state_bc)
         !     source_sink%flow_condition%general%effective_porosity%dataset%rarray(1)
         ! else
         gen_auxvars_ss(ZERO_INTEGER,sum_connection)%effective_porosity = &
-          gen_auxvars(ZERO_INTEGER,sum_connection)%effective_porosity
+          gen_auxvars(ZERO_INTEGER,ghosted_id)%effective_porosity
         !endif
       endif
       xxss(1) = maxval(gen_auxvars_ss(ZERO_INTEGER,sum_connection)%pres(option% &

@@ -510,17 +510,17 @@ subroutine EOSWaterSetDensity(keyword,aux)
       exp_p_water_compressibility = aux(3)
       EOSWaterDensityPtr => EOSWaterDensityBRAGFLO
     case('QUADRATIC')
-      if (Initialized(aux(1))) then
+      if (Uninitialized(aux(1))) then
         quadratic_reference_density = 999.014d0 !kg/m3
       else
         quadratic_reference_density = aux(1)
       end if
-      if (Initialized(aux(2))) then
+      if (Uninitialized(aux(2))) then
         quadratic_reference_pressure = 1.0d5 !Pa
       else
         quadratic_reference_pressure = aux(2)
       end if
-      if (Initialized(aux(3))) then
+      if (Uninitialized(aux(3))) then
         quadratic_wat_compressibility = 3.94769306686405d-10 !1/Pa
       else
         quadratic_wat_compressibility = aux(3)
@@ -1572,7 +1572,8 @@ subroutine EOSWaterSatPresWagnerPruss(T, calculate_derivatives, &
     dpolynomial_dtau = a(1)+1.5d0*a(2)*sqrt(tau)+3.d0*a(3)*tau*tau+ &
                        3.5d0*a(4)*tau**2.5d0+4.d0*a(5)*tau**3.d0+ &
                        7.5d0*a(6)*tau**6.5d0
-    dPS_dT = PS*(dpolynomial_dtau/T_over_Tc*dtau_dT+polynomial*Tc)
+    dPS_dT = PS*(dpolynomial_dtau/T_over_Tc*dtau_dT - &
+                 polynomial/(T_over_Tc*T_over_Tc*Tc))
   else
     dPS_dT = UNINITIALIZED_DOUBLE
   endif

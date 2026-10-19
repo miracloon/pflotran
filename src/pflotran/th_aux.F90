@@ -1334,6 +1334,7 @@ subroutine THAuxVarPerturb(th_auxvar,global_auxvar, &
   x(TH_TEMPERATURE_DOF) = th_auxvar%temp
   do idof = 1, option%nflowdof
     pert = x(idof)*th_rel_pert+th_min_pert(idof)
+    if (dabs(pert) < 1.d-40) pert = th_min_pert(idof)
     th_auxvar%auxvar_pert(idof)%pert = pert
     x_pert = x
     x_pert(idof) = x(idof) + pert
@@ -1555,6 +1556,7 @@ subroutine THWellAuxVarPerturb(liquid_pressure,auxvar_well, &
   x(th_well_dof) = auxvar_well%temp
   do idof = 1, option%nflowdof
     pert = x(idof)*th_rel_pert+th_min_pert(idof)
+    if (dabs(pert) < 1.d-40) pert = th_min_pert(idof)
     auxvar_well%auxvar_pert(idof)%pert = pert
     x_pert(1:option%nflowdof) = x
     x_pert(idof) = x(idof) + pert

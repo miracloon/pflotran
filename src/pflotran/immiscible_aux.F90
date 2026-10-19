@@ -306,6 +306,7 @@ subroutine ImmiscibleAuxVarPerturb(x,immis_auxvar,global_auxvar, &
   option%iflag = IMMIS_UPDATE_FOR_DERIVATIVE
   do idof = 1, option%nflowdof
     pert = x(idof)*immis_rel_pert+immis_min_pert(idof)
+    if (dabs(pert) < 1.d-40) pert = immis_min_pert(idof)
     immis_auxvar(idof)%pert = pert
     x_pert(1:option%nflowdof) = x
     x_pert(idof) = x(idof) + pert

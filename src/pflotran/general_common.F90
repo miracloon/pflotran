@@ -289,7 +289,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
         ! por * deng * dUg_dT +
         ! (1-por) * dens * Cp
         Jac(3,3) = &
-          porosity * gen_auxvar%d%denl_T * gen_auxvar%U(2) + &
+          porosity * gen_auxvar%d%deng_T * gen_auxvar%U(2) + &
           porosity * gen_auxvar%den(2) * gen_auxvar%d%Ug_T + &
           (1.d0 - porosity) * material_auxvar%soil_particle_density * &
             soil_heat_capacity
@@ -4822,7 +4822,7 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                           PETSC_FALSE)
          do irow = 1, option%nflowdof
            Jdn(irow,idof) = (res_pert(irow)-res_pert_minus(irow))/(2.d0 * &
-                            gen_auxvar_up(idof)%pert)
+                            gen_auxvar_dn(idof)%pert)
          enddo !irow
        enddo ! idof
     else

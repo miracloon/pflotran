@@ -1858,7 +1858,8 @@ subroutine EOSGasHenry_methane(T,Psat,Hc,calculate_derivative, &
 
   if (calculate_derivative) then
     Hc_P = 0.d0
-    Hc_T = -7.837d3/(T**2) + 2*1.509d6/(T**3) - 3*2.06d7/(T**4)
+    Hc_T = -7.837d3/(T_temp**2) + 2.d0*1.509d6/(T_temp**3) - &
+           3.d0*2.06d7/(T_temp**4)
     Hc_T = Hc_T * Hc
   endif
 
