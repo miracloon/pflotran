@@ -575,8 +575,6 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   endif
 
   thc_auxvar%dden_dp = thc_auxvar%dden_dp * dpw_dp
-  thc_auxvar%dh_dP = thc_auxvar%dh_dP * dpw_dp
-  thc_auxvar%du_dP = thc_auxvar%du_dP * dpw_dp
 
   ! molecular diffusion [m^2/s] from FLUID_PROPERTY DIFFUSION_COEFFICIENT,
   ! optionally scaled by Arrhenius(AE,T,25C) when DIFFUSION_ACTIVATION_ENERGY
@@ -601,6 +599,8 @@ subroutine THCAuxVarCompute(x,thc_auxvar,global_auxvar, &
   ! Liquid enthalpy h(P,T) from EOS water; internal energy u = h - P/rho.
   if (thc_energy_mode == THC_ENERGY_FULL_EOS) then
     call THCEnergyEOS(thc_auxvar,pw,option)
+    thc_auxvar%dh_dP = thc_auxvar%dh_dP * dpw_dp
+    thc_auxvar%du_dP = thc_auxvar%du_dP * dpw_dp
   else
     thc_auxvar%u = 0.d0
     thc_auxvar%h = 0.d0
