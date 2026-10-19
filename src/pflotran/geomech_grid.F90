@@ -1385,16 +1385,19 @@ subroutine GeomechGridLocalizeRegFromSideSet(geomech_grid, &
 
   if (option%comm%size>1) then
     call MatSeqAIJRestoreArray(Mat_face_loc,aa_v,ierr);CHKERRQ(ierr)
+    call MatRestoreRowIJ(Mat_face_loc,ONE_INTEGER,PETSC_FALSE,PETSC_FALSE, &
+                         nrow,ia_p,ja_p,done,ierr);CHKERRQ(ierr)
     call MatDestroy(Mat_face_loc,ierr);CHKERRQ(ierr)
   else
     call MatSeqAIJRestoreArray(Mat_face,aa_v,ierr);CHKERRQ(ierr)
+    call MatRestoreRowIJ(Mat_face,ONE_INTEGER,PETSC_FALSE,PETSC_FALSE,nrow, &
+                         ia_p,ja_p,done,ierr);CHKERRQ(ierr)
   endif
 
   call MatDestroy(Mat_region_vert_to_face,ierr);CHKERRQ(ierr)
   call MatDestroy(Mat_region_face_to_vert,ierr);CHKERRQ(ierr)
   call MatDestroy(Mat_face_to_vert,ierr);CHKERRQ(ierr)
   call MatDestroy(Mat_face,ierr);CHKERRQ(ierr)
-  call MatDestroy(Mat_face_loc,ierr);CHKERRQ(ierr)
   deallocate(mapped_face_vertices)
   deallocate(loc_face_vertices)
   deallocate(face_vertices)

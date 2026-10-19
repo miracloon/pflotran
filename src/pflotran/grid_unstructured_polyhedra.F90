@@ -98,7 +98,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
   call OptionSetBlocking(option,PETSC_TRUE)
   call OptionCheckNonBlockingError(option)
 
-  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%comm%io_rank, &
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,option%comm%io_rank, &
                  option%mycomm,ierr);CHKERRQ(ierr)
   num_cells = temp_int
   pgrid%num_cells_global = num_cells
@@ -230,7 +230,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
   call OptionCheckNonBlockingError(option)
   deallocate(temp_real_array)
 
-  call MPI_Bcast(max_nvert_per_cell,ONE_INTEGER_MPI,MPI_INTEGER, &
+  call MPI_Bcast(max_nvert_per_cell,ONE_INTEGER_MPI,MPIU_INTEGER, &
                  option%comm%io_rank,option%mycomm,ierr);CHKERRQ(ierr)
   ugrid%max_nvert_per_cell = max_nvert_per_cell
   pgrid%max_nvert_per_cell = max_nvert_per_cell
@@ -257,7 +257,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
   call OptionCheckNonBlockingError(option)
 
   int_mpi = 1
-  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%comm%io_rank, &
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,option%comm%io_rank, &
                  option%mycomm,ierr);CHKERRQ(ierr)
   num_faces = temp_int
   pgrid%num_faces_global = num_faces
@@ -395,7 +395,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
   call OptionCheckNonBlockingError(option)
 
   int_mpi = 1
-  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%comm%io_rank, &
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,option%comm%io_rank, &
                  option%mycomm,ierr);CHKERRQ(ierr)
   num_vertices = temp_int
   pgrid%num_vertices_global = num_vertices
@@ -472,12 +472,12 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
   deallocate(nfaces_per_proc)
 
   temp_int = max_nface_per_cell
-  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%comm%io_rank, &
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,option%comm%io_rank, &
                  option%mycomm,ierr);CHKERRQ(ierr)
   pgrid%max_nface_per_cell = temp_int
 
   temp_int = max_nvert_per_face
-  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%comm%io_rank, &
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,option%comm%io_rank, &
                  option%mycomm,ierr);CHKERRQ(ierr)
   pgrid%max_nvert_per_face = temp_int
 
@@ -2422,11 +2422,11 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
 
 
   call MPI_Allreduce(pgrid%num_ufaces_local,pgrid%num_ufaces_global, &
-                     ONE_INTEGER_MPI,MPI_INTEGER,MPI_SUM,option%mycomm, &
+                     ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm, &
                      ierr);CHKERRQ(ierr)
   call MPI_Allreduce(pgrid%num_verts_of_ufaces_local, &
                      pgrid%num_verts_of_ufaces_global,ONE_INTEGER_MPI, &
-                     MPI_INTEGER,MPI_SUM,option%mycomm,ierr);CHKERRQ(ierr)
+                     MPIU_INTEGER,MPI_SUM,option%mycomm,ierr);CHKERRQ(ierr)
 
   allocate(pgrid%uface_natvertids(pgrid%num_verts_of_ufaces_local))
   count = 0

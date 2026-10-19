@@ -441,7 +441,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
         endif
     end select
   enddo
-  call MPI_Allreduce(MPI_IN_PLACE,error_count,ONE_INTEGER_MPI,MPI_INTEGER, &
+  call MPI_Allreduce(MPI_IN_PLACE,error_count,ONE_INTEGER_MPI,MPIU_INTEGER, &
                      MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
   if (error_count > 0) then
     option%io_buffer = 'Unknown cell types in ' // trim(filename) // '.'
@@ -1200,9 +1200,9 @@ subroutine UGridDecompose(unstructured_grid,option)
       do ghosted_id = 1, unstructured_grid%ngmax
         select case(unstructured_grid%cell_vertices(0,ghosted_id))
           case(4)
-            unstructured_grid%cell_type = QUAD_TYPE
+            unstructured_grid%cell_type(ghosted_id) = QUAD_TYPE
           case(3)
-            unstructured_grid%cell_type = TRI_TYPE
+            unstructured_grid%cell_type(ghosted_id) = TRI_TYPE
           case default
             option%io_buffer = 'Cell type not recognized: '
             call PrintErrMsg(option)
@@ -1632,7 +1632,8 @@ function UGridComputeInternConnect(unstructured_grid, &
         iconn = iconn + 1
         ! find face
         found = PETSC_FALSE
-        do iface = 1, unstructured_grid%cell_vertices(0,local_id)
+        do iface = 1, UCellGetNFaces(unstructured_grid%cell_type(local_id), &
+                                     option)
           face_id = cell_to_face(iface,local_id)
           do iside = 1,2
             cell_id2 = face_to_cell(iside,face_id)
@@ -1654,7 +1655,8 @@ function UGridComputeInternConnect(unstructured_grid, &
         face_type = &
           UCellGetFaceType(unstructured_grid%cell_type(local_id),iface,option)
         found = PETSC_FALSE
-        do iface2 = 1, unstructured_grid%cell_vertices(0,cell_id2)
+        do iface2 = 1, UCellGetNFaces(unstructured_grid%cell_type(cell_id2), &
+                                      option)
           if (cell_to_face(iface,local_id) == &
               cell_to_face(iface2,cell_id2)) then
             found = PETSC_TRUE
@@ -2467,7 +2469,8 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
       point%y = v2(2)
       point%z = v2(3)
       face_id = unstructured_grid%cell_to_face_ghosted(iface_cell, ghosted_id)
-      face_type = UCellGetFaceType(unstructured_grid%cell_type(ghosted_id),face_id,option)
+      face_type = UCellGetFaceType(unstructured_grid%cell_type(ghosted_id), &
+                                   iface_cell,option)
       vertex1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
       vertex2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
       if (face_type == LINE_FACE_TYPE) then
@@ -3704,7 +3707,7 @@ subroutine UGridMapSideSet2(unstructured_grid,face_vertices,n_ss_faces, &
   allocate(temp_int(2))
   temp_int(1) = mapped_face_count
   temp_int(2) = n_ss_faces
-  call MPI_Allreduce(MPI_IN_PLACE,temp_int,TWO_INTEGER_MPI,MPI_INTEGER, &
+  call MPI_Allreduce(MPI_IN_PLACE,temp_int,TWO_INTEGER_MPI,MPIU_INTEGER, &
                      MPI_SUM,option%mycomm,ierr);CHKERRQ(ierr)
   if (temp_int(1) /= temp_int(2)) then
     option%io_buffer = 'The number of faces mapped in UGridMapSideSet2 (' // &

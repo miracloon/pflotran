@@ -1457,7 +1457,7 @@ subroutine RegionCheckCellIndexBounds(region,num_cells,option)
   ! invert for MPI max below
   cell_id_extremes(1) = -cell_id_extremes(1)
   call MPI_Allreduce(MPI_IN_PLACE,cell_id_extremes,TWO_INTEGER_MPI, &
-                     MPI_INTEGER,MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
+                     MPIU_INTEGER,MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
   ! invert back
   cell_id_extremes(1) = -cell_id_extremes(1)
 

@@ -239,6 +239,7 @@ subroutine CPRT3Apply(p, x, y,ierr)
   endif
 
   ! supposedly saturation is the 2nd unknown of the block.
+  call VecZeroEntries(y,ierr);CHKERRQ(ierr)
   call VecStrideScatter(z,1,y,INSERT_VALUES,ierr);CHKERRQ(ierr)
 
 end subroutine CPRT3Apply
@@ -596,7 +597,7 @@ subroutine CPRCreateT1(c,  ctx,   ierr)
       call KSPSetType(ksp,KSPRICHARDSON,ierr);CHKERRQ(ierr)
     case('FGMRES')
       call KSPSetType(ksp,KSPFGMRES,ierr);CHKERRQ(ierr)
-      call KSPSetTolerances(ksp,1.0d-3,1.d0-3,PETSC_DEFAULT_REAL, &
+      call KSPSetTolerances(ksp,1.0d-3,1.0d-3,PETSC_DEFAULT_REAL, &
                             PETSC_DEFAULT_INTEGER,ierr);CHKERRQ(ierr)
     case('GMRES')
       call KSPSetType(ksp,KSPGMRES,ierr);CHKERRQ(ierr)
@@ -665,7 +666,7 @@ subroutine CPRCreateT3(c,  ctx,   ierr)
       call KSPSetType(ksp,KSPRICHARDSON,ierr);CHKERRQ(ierr)
     case('FGMRES')
       call KSPSetType(ksp,KSPFGMRES,ierr);CHKERRQ(ierr)
-      call KSPSetTolerances(ksp,1.0d-3,1.d0-3,PETSC_DEFAULT_REAL, &
+      call KSPSetTolerances(ksp,1.0d-3,1.0d-3,PETSC_DEFAULT_REAL, &
                             PETSC_DEFAULT_INTEGER,ierr);CHKERRQ(ierr)
     case('GMRES')
       call KSPSetType(ksp,KSPGMRES,ierr);CHKERRQ(ierr)
@@ -1722,7 +1723,7 @@ subroutine MatGetMaxRowCount(a, mx, ierr)
                        PETSC_NULL_SCALAR_POINTER,ierr);CHKERRQ(ierr)
   end do
 
-  call MPI_Allreduce(mx_loc,mx,ONE_INTEGER_MPI,MPI_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(mx_loc,mx,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr);CHKERRQ(ierr)
 
 

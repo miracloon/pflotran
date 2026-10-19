@@ -776,7 +776,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 
     ! check to ensure that there is at least one grid cell in each region
     call MPI_Allreduce(region%num_cells,global_cell_count,ONE_INTEGER_MPI, &
-                       MPI_INTEGER,MPI_SUM,option%mycomm,ierr);CHKERRQ(ierr)
+                       MPIU_INTEGER,MPI_SUM,option%mycomm,ierr);CHKERRQ(ierr)
     if (global_cell_count == 0) then
       option%io_buffer = 'No cells assigned to REGION "' // &
         trim(region%name) // '".'
@@ -2579,7 +2579,7 @@ subroutine GridPrintSize(grid,option)
     int_array(1) = grid%nlmax
     int_array(2) = -grid%nlmax
     call MPI_Allreduce(MPI_IN_PLACE,int_array,TWO_INTEGER_MPI, &
-                       MPI_INTEGER,MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
+                       MPIU_INTEGER,MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
     option%io_buffer = ' Maximum number of grid cells per process: ' // &
                        StringWrite(int_array(1))
     call PrintMsg(option)

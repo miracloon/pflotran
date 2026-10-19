@@ -5354,7 +5354,7 @@ subroutine GridEclipsePorPermExchangeAndSet(poro_p, permx_p, permy_p, permz_p,&
         call MPI_Send(temp_int_array, ONE_INTEGER_MPI, MPI_INTEGER, &
                       iorank, tag_mpi_0, option%mycomm, ierr)
         int_mpi = nlmax
-        call MPI_Send(inatsend      , int_mpi        , MPI_INTEGER, &
+        call MPI_Send(inatsend      , int_mpi        , MPIU_INTEGER, &
                       iorank, tag_mpi_0, option%mycomm, ierr)
 
         ! Allocate buffers to hold response poro and perm values from ioproc
@@ -5406,7 +5406,7 @@ subroutine GridEclipsePorPermExchangeAndSet(poro_p, permx_p, permy_p, permz_p,&
         ! Receive the natural address array from irank
 
         int_mpi = nlo
-        call MPI_Recv(winat, int_mpi, MPI_INTEGER, irank, MPI_ANY_TAG, &
+        call MPI_Recv(winat, int_mpi, MPIU_INTEGER, irank, MPI_ANY_TAG, &
                       option%mycomm, status_mpi, ierr)
 
         ! On this (io) proc, set up the perm and poro values to be returned
@@ -5539,14 +5539,14 @@ subroutine GridEclipseProcnumExchangeAndSet(inatsend, nlmax, option)
                       iorank,  tag_mpi_0, option%mycomm, ierr)
 
         int_mpi = nlmax
-        call MPI_Send(inatsend      , int_mpi        , MPI_INTEGER, &
+        call MPI_Send(inatsend      , int_mpi        , MPIU_INTEGER, &
                       iorank,  tag_mpi_0, option%mycomm, ierr)
 
       endif
 
       if (t_rank  == iorank) then
 
-       !This is IO rank - receive the other rank nlmax value (nlo) from irank
+        !This is IO rank - receive the other rank nlmax value (nlo) from irank
 
         temp_int_array(1) = 0
         call MPI_Recv(temp_int_array, ONE_INTEGER_MPI, MPI_INTEGER, &
@@ -5560,7 +5560,7 @@ subroutine GridEclipseProcnumExchangeAndSet(inatsend, nlmax, option)
         ! Receive the natural address array from irank
 
         int_mpi = nlo
-        call MPI_Recv(winat, int_mpi, MPI_INTEGER, irank, MPI_ANY_TAG, &
+        call MPI_Recv(winat, int_mpi, MPIU_INTEGER, irank, MPI_ANY_TAG, &
                       option%mycomm, status_mpi, ierr)
 
         ! On this (io) proc, set up the procnum values

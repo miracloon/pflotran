@@ -1002,7 +1002,7 @@ function UCellQuality(cell_type,vertices,option)
 
   max_side = -MAX_DOUBLE
   min_side = MAX_DOUBLE
-  do iedge = 1, UCellGetNVertices(cell_type,option)
+  do iedge = 1, UCellGetNEdges(cell_type)
     len = UCellGetEdgeLength(cell_type,iedge,vertices)
     if (len > max_side) max_side = len
     if (len < min_side) min_side = len

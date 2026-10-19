@@ -116,7 +116,7 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
   call OptionSetBlocking(option,PETSC_TRUE)
   call OptionCheckNonBlockingError(option)
 
-  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%comm%io_rank, &
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,option%comm%io_rank, &
                  option%mycomm,ierr);CHKERRQ(ierr)
   num_cells = temp_int
   explicit_grid%num_cells_global = num_cells
@@ -242,7 +242,7 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
   call OptionCheckNonBlockingError(option)
 
   int_mpi = 1
-  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%comm%io_rank, &
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,option%comm%io_rank, &
                  option%mycomm,ierr);CHKERRQ(ierr)
   num_connections = temp_int
 

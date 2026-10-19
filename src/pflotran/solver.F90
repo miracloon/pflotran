@@ -1401,6 +1401,7 @@ subroutine SolverReadNewtonSelectCase(solver,input,keyword,found, &
             call InputKeywordUnrecognized(input,keyword,error_string,option)
         end select
       enddo
+      call InputPopBlock(input,option)
     case default
       found = PETSC_FALSE
   end select
@@ -1843,7 +1844,7 @@ subroutine SolverLinearPrintFailedReason(solver,option)
         call PCGetFailedReason(pc,pc_failed_reason,ierr);CHKERRQ(ierr)
         ! have to perform global reduction on pc_failed_reason
         temp_int = pc_failed_reason%v
-        call MPI_Allreduce(MPI_IN_PLACE,temp_int,ONE_INTEGER_MPI,MPI_INTEGER, &
+        call MPI_Allreduce(MPI_IN_PLACE,temp_int,ONE_INTEGER_MPI,MPIU_INTEGER, &
                            MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
         global_pc_failed_reason%v = temp_int
         if (global_pc_failed_reason == PC_SUBPC_ERROR) then
@@ -1868,7 +1869,7 @@ subroutine SolverLinearPrintFailedReason(solver,option)
         endif
         ! have to perform global reduction (again) on pc_failed_reason
         temp_int = pc_failed_reason%v
-        call MPI_Allreduce(MPI_IN_PLACE,temp_int,ONE_INTEGER_MPI,MPI_INTEGER, &
+        call MPI_Allreduce(MPI_IN_PLACE,temp_int,ONE_INTEGER_MPI,MPIU_INTEGER, &
                            MPI_MAX,option%mycomm,ierr);CHKERRQ(ierr)
         global_pc_failed_reason%v = temp_int
         select case(global_pc_failed_reason%v)

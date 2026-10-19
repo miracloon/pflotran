@@ -558,7 +558,7 @@ subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason, &
                         ierr);CHKERRQ(ierr)
       ! tweak the index to get the cell id from the mdof vector
       imin_solution(i) = GridIndexToCellID(solution_vec,imin_solution(i),grid,GLOBAL)
-      imin_update(i) = GridIndexToCellID(update_vec,imax_update(i),grid,GLOBAL)
+      imin_update(i) = GridIndexToCellID(update_vec,imin_update(i),grid,GLOBAL)
       imin_residual(i) = GridIndexToCellID(residual_vec,imin_residual(i),grid,GLOBAL)
 !      imin_solution(i) = imin_solution(i)/ndof
 !      imin_update(i) = imin_update(i)/ndof
