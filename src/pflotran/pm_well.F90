@@ -512,7 +512,7 @@ module PM_Well_class
     PetscReal :: pipe_wall_thermal_conductivity
     PetscReal :: insulator_thickness
     PetscReal :: insulator_thermal_conductivity
-    PetscReal :: flow_velocity
+    PetscReal :: mass_flow_rate ! [kg/s]
     PetscReal :: heat_flux(2,2)
     type(connection_set_type), pointer :: connection_set
     type(connection_set_type), pointer :: bc_connection_set
@@ -748,7 +748,7 @@ function PMWellUShapeCreate()
   pm_well%pipe_wall_thermal_conductivity = UNINITIALIZED_DOUBLE
   pm_well%insulator_thickness = UNINITIALIZED_DOUBLE
   pm_well%insulator_thermal_conductivity = UNINITIALIZED_DOUBLE
-  pm_well%flow_velocity = UNINITIALIZED_DOUBLE
+  pm_well%mass_flow_rate = UNINITIALIZED_DOUBLE
   pm_well%heat_flux = 0.d0
   nullify(pm_well%well_cells_ghosted)
   nullify(pm_well%well_cells_bc_type)
@@ -4344,7 +4344,8 @@ subroutine PMWellReadWell(pm_well,input,option,keyword,error_string,found)
         !-----------------------------
           case('INLET_TEMPERATURE','PIPE_INNER_DIAMETER', &
                'PIPE_WALL_THICKNESS','PIPE_WALL_THERMAL_CONDUCTIVITY', &
-               'PIPE_FLOW_VELOCITY','USE_WELL_INDEX', &
+               'PIPE_FLOW_VELOCITY','PIPE_MASS_FLOW_RATE', &
+               'USE_WELL_INDEX', &
                'INSULATOR_THICKNESS','INSULATOR_THERMAL_CONDUCTIVITY', &
                'NUSSELT_MODE','NUSSELT_LAMINAR','NUSSELT_Z_REF', &
                'USE_NUSSELT_ENTRANCE_FACTOR')
@@ -4390,18 +4391,37 @@ subroutine PMWellReadWell(pm_well,input,option,keyword,error_string,found)
                     call InputReadDouble(input,option, &
                                          pm%pipe_wall_thermal_conductivity)
                     call InputErrorMsg(input,option,word,error_string)
+                    call InputReadAndConvertUnits(input, &
+                           pm%pipe_wall_thermal_conductivity,'W/m-C', &
+                           trim(error_string)// &
+                           ',PIPE_WALL_THERMAL_CONDUCTIVITY',option)
+                    ! W/m-C -> MW/m-C
+                    pm%pipe_wall_thermal_conductivity = &
+                      pm%pipe_wall_thermal_conductivity * 1.d-6
                   case('INSULATOR_THICKNESS')
                     call InputReadDouble(input,option,pm%insulator_thickness)
                     call InputErrorMsg(input,option,word,error_string)
                   case('INSULATOR_THERMAL_CONDUCTIVITY')
                     call InputReadDouble(input,option,pm%insulator_thermal_conductivity)
                     call InputErrorMsg(input,option,word,error_string)
+                    call InputReadAndConvertUnits(input, &
+                           pm%insulator_thermal_conductivity,'W/m-C', &
+                           trim(error_string)// &
+                           ',INSULATOR_THERMAL_CONDUCTIVITY',option)
+                    ! W/m-C -> MW/m-C
+                    pm%insulator_thermal_conductivity = &
+                      pm%insulator_thermal_conductivity * 1.d-6
                   case('PIPE_FLOW_VELOCITY')
-                    call InputReadDouble(input,option,pm%flow_velocity)
+                    option%io_buffer = 'PIPE_FLOW_VELOCITY is no longer &
+                      &supported in ' // trim(error_string) // '. Please &
+                      &specify PIPE_MASS_FLOW_RATE [kg/s] instead.'
+                    call PrintErrMsg(option)
+                  case('PIPE_MASS_FLOW_RATE')
+                    call InputReadDouble(input,option,pm%mass_flow_rate)
                     call InputErrorMsg(input,option,word,error_string)
-                    call InputReadAndConvertUnits(input,pm%flow_velocity, &
-                           'm/s',trim(error_string)//',PIPE_FLOW_VELOCITY', &
-                           option)
+                    call InputReadAndConvertUnits(input,pm%mass_flow_rate, &
+                           'kg/sec',trim(error_string)// &
+                           ',PIPE_MASS_FLOW_RATE',option)
                 end select
               class default
                 option%io_buffer = &

@@ -136,11 +136,11 @@ subroutine THWellSetup(pm_well_base,realization)
       &specified when INSULATOR_THICKNESS is specified.'
     call PrintErrMsg(option)
   endif
-  if (Uninitialized(pm_well%flow_velocity)) then
-    option%io_buffer = 'Well PIPE_FLOW_VELOCITY must be specified.'
+  if (Uninitialized(pm_well%mass_flow_rate)) then
+    option%io_buffer = 'Well PIPE_MASS_FLOW_RATE must be specified.'
     call PrintErrMsg(option)
-  elseif (pm_well%flow_velocity < 0.d0) then
-    option%io_buffer = 'Well PIPE_FLOW_VELOCITY must be non-negative.'
+  elseif (pm_well%mass_flow_rate < 0.d0) then
+    option%io_buffer = 'Well PIPE_MASS_FLOW_RATE must be non-negative.'
     call PrintErrMsg(option)
   endif
 
@@ -662,7 +662,7 @@ subroutine THWell(r,J,pm_well_base,calculate_derivatives)
     i = i + 1
     call THWellFluxDerivative(auxvars_well(ghosted_well_id_up), &
                     auxvars_well(ghosted_well_id_dn), &
-                    pm_well%flow_velocity, &
+                    pm_well%mass_flow_rate/FMWH2O, &
                     connection_set%dist(0,iconn), &
                     connection_set%area(iconn), &
                     Res,Jup,Jdn,ndof,calculate_derivatives, &
@@ -714,7 +714,7 @@ subroutine THWell(r,J,pm_well_base,calculate_derivatives)
     end select
     call THWellFluxDerivative(auxvar_well_up, &
                     auxvar_well_dn, &
-                    pm_well%flow_velocity*velocity_scale, &
+                    pm_well%mass_flow_rate/FMWH2O*velocity_scale, &
                     connection_set%dist(0,ibc), &
                     connection_set%area(ibc), &
                     Res,Jup,Jdn,ndof,calculate_derivatives, &
@@ -900,7 +900,7 @@ end subroutine THWellAccumulationDerivative
 ! ************************************************************************** !
 
 subroutine THWellFlux(auxvar_well_up,auxvar_well_dn, &
-                      velocity,dist,area,Res,Jup,Jdn,ndof, &
+                      q_kmol,dist,area,Res,Jup,Jdn,ndof, &
                       calculate_derivatives)
   !
   ! Calculates internal flux term for TH well residual and Jacobian
@@ -913,14 +913,14 @@ subroutine THWellFlux(auxvar_well_up,auxvar_well_dn, &
   PetscReal :: Res(ndof)
   PetscReal :: Jup(ndof,ndof)
   PetscReal :: Jdn(ndof,ndof)
-  PetscReal :: velocity
+  PetscReal :: q_kmol ! [kmol/s]
   PetscReal :: dist
   PetscReal :: area
   PetscBool :: calculate_derivatives
 
   PetscReal :: tup, tdn
   PetscReal :: dh_dTup, dh_dTdn
-  PetscReal :: enthalpy, q_kmol
+  PetscReal :: enthalpy
   PetscReal :: diffusive_energy_flux, convective_energy_flux
   PetscReal :: tempreal
 
@@ -932,14 +932,12 @@ subroutine THWellFlux(auxvar_well_up,auxvar_well_dn, &
   ! convection
   dh_dTup = 0.d0
   dh_dTdn = 0.d0
-  if (velocity > 0) then
+  if (q_kmol > 0.d0) then
     enthalpy = auxvar_well_up%h
     dh_dTup = auxvar_well_up%dh_dT
-    q_kmol = velocity * area * auxvar_well_up%den
   else
     enthalpy = auxvar_well_dn%h
     dh_dTdn = auxvar_well_dn%dh_dT
-    q_kmol = velocity * area * auxvar_well_dn%den
   endif
 
   convective_energy_flux = q_kmol * enthalpy
@@ -963,7 +961,7 @@ end subroutine THWellFlux
 ! ************************************************************************** !
 
 subroutine THWellFluxDerivative(auxvar_well_up,auxvar_well_dn, &
-                                velocity,dist,area,Res,Jup,Jdn,ndof, &
+                                q_kmol,dist,area,Res,Jup,Jdn,ndof, &
                                 calculate_derivatives,is_bc)
   !
   ! Calculates internal flux term for TH well residual and Jacobian
@@ -976,7 +974,7 @@ subroutine THWellFluxDerivative(auxvar_well_up,auxvar_well_dn, &
   PetscReal :: Res(ndof)
   PetscReal :: Jup(ndof,ndof)
   PetscReal :: Jdn(ndof,ndof)
-  PetscReal :: velocity
+  PetscReal :: q_kmol ! [kmol/s]
   PetscReal :: dist
   PetscReal :: area
   PetscBool :: calculate_derivatives
@@ -987,14 +985,14 @@ subroutine THWellFluxDerivative(auxvar_well_up,auxvar_well_dn, &
   PetscInt :: idof, ieq
 
   call THWellFlux(auxvar_well_up,auxvar_well_dn, &
-                  velocity,dist,area,Res,Jup,Jdn,ndof, &
+                  q_kmol,dist,area,Res,Jup,Jdn,ndof, &
                   .not.th_numerical_derivatives)
   if (calculate_derivatives .and. th_numerical_derivatives) then
     Jup = 0.d0
     if (.not.is_bc) then
       do idof = 1, ndof
         call THWellFlux(auxvar_well_up%auxvar_pert(idof),auxvar_well_dn, &
-                        velocity,dist,area,Res_pert,Jdum,Jdum1,ndof,PETSC_FALSE)
+                        q_kmol,dist,area,Res_pert,Jdum,Jdum1,ndof,PETSC_FALSE)
         do ieq = 1, ndof
           Jup(ieq,idof) = (Res_pert(ieq) - Res(ieq)) / &
                           auxvar_well_up%auxvar_pert(idof)%pert
@@ -1004,7 +1002,7 @@ subroutine THWellFluxDerivative(auxvar_well_up,auxvar_well_dn, &
     Jdn = 0.d0
     do idof = 1, ndof
       call THWellFlux(auxvar_well_up,auxvar_well_dn%auxvar_pert(idof), &
-                      velocity,dist,area,Res_pert,Jdum,Jdum1,ndof,PETSC_FALSE)
+                      q_kmol,dist,area,Res_pert,Jdum,Jdum1,ndof,PETSC_FALSE)
       do ieq = 1, ndof
         Jdn(ieq,idof) = (Res_pert(ieq) - Res(ieq)) / &
                         auxvar_well_dn%auxvar_pert(idof)%pert
@@ -1362,13 +1360,21 @@ function THWellComputeConvCoefficient(auxvar_well,pm_well)
   prandtl = 0.d0
   nusselt = 0.d0
 
-  velocity = pm_well%flow_velocity
   pipe_diameter = pm_well%pipe_inner_diameter
 
   density = auxvar_well%den_kg
   viscosity = auxvar_well%vis
   heat_capacity = auxvar_well%spec_heat_fluid
   thermal_cond = auxvar_well%therm_cond_fluid
+
+  ! local mean velocity derived from the constant mass flow rate
+  ! [m/s] = [kg/s] / ([kg/m^3] * [m^2])
+  if (density > 0.d0 .and. pipe_diameter > 0.d0) then
+    velocity = pm_well%mass_flow_rate / &
+               (density * PI * (0.5d0 * pipe_diameter)**2)
+  else
+    velocity = 0.d0
+  endif
 
   !Compute Reynolds number
   reynolds = THWellComputeReynoldNumber(density,velocity,pipe_diameter, &

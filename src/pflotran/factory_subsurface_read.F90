@@ -554,8 +554,9 @@ subroutine FactorySubsurfReadWellPM(input,option,pm)
             pm => PMWellWIPPQICreate()
             option%flow%well_coupling = WELL_MODEL_WIPP_QI
           case('CLOSED_LOOP_COAXIAL')
-            pm => PMWellCoaxialCreate()
-            option%flow%well_coupling = WELL_MODEL_COAXIAL
+            option%io_buffer = 'The CLOSED_LOOP_COAXIAL well model is not &
+              &yet supported in ' // trim(error_string) // '.'
+            call PrintErrMsg(option)
           case('CLOSED_LOOP_U_SHAPE')
             pm => PMWellUShapeCreate()
             option%flow%well_coupling = WELL_MODEL_U_SHAPE
