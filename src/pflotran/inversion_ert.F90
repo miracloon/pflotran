@@ -935,6 +935,8 @@ subroutine InvERTEvaluateCostFunction(this)
     ! get cond & block of the ith constrained eq.
     ghosted_id = rblock(iconst,1)
     ghosted_id_nb = rblock(iconst,2)
+    ! Reference metrics (3, 4) have no neighbor.
+    if (ghosted_id_nb <= 0) ghosted_id_nb = ghosted_id
     if ((patch%imat(ghosted_id) <= 0) .or. &
         (patch%imat(ghosted_id_nb) <= 0)) cycle
     irb = rblock(iconst,3)
@@ -1300,8 +1302,10 @@ subroutine InversionERTCGLSRhs(this)
 
     cond_ce = MaterialAuxVarGetValue(material_auxvars(rblock(iconst,1)), &
                                      MATERIAL_ELECTRICAL_CONDUCTIVITY)
-    cond_nb = MaterialAuxVarGetValue(material_auxvars(rblock(iconst,2)), &
-                                     MATERIAL_ELECTRICAL_CONDUCTIVITY)
+    ! Reference metrics (3, 4) have no neighbor.
+    cond_nb = MaterialAuxVarGetValue(material_auxvars( &
+                merge(rblock(iconst,2),rblock(iconst,1),rblock(iconst,2) > 0)), &
+                MATERIAL_ELECTRICAL_CONDUCTIVITY)
     irb = rblock(iconst,3)
 
     select case(constrained_block%structure_metric(irb))
@@ -1408,6 +1412,7 @@ contains
     ! get cond & block of the ith constrained eq.
     ghosted_id = rblock(iconst,1)
     ghosted_id_nb = rblock(iconst,2)
+    if (ghosted_id_nb <= 0) ghosted_id_nb = ghosted_id
     if (patch%imat(ghosted_id) <= 0 .or.   &
         patch%imat(ghosted_id_nb) <=0 ) return
 
