@@ -505,6 +505,7 @@ module PM_Well_class
     PetscInt, pointer :: well_cells_ghosted(:)
     PetscInt, pointer :: well_cells_bc_type(:)
     PetscReal :: inlet_temperature
+    PetscReal :: initial_temperature
     PetscReal :: nusselt_laminar
     PetscReal :: nusselt_z_ref
     PetscReal :: pipe_inner_diameter
@@ -568,6 +569,7 @@ module PM_Well_class
             PMWellInitializeWellFlow, &
             PMWellUpdateStrata, &
             PMWellBaseInit, &
+            PMWellAssignInitTempClosedLoop, &
             PMWellCopyReservoir, &
             PMWellSequentialInit, &
             PMWellQIInit, &
@@ -635,6 +637,46 @@ subroutine PMWellBaseInit(pm_well)
   pm_well%print_output = PETSC_FALSE
 
 end subroutine PMWellBaseInit
+
+! ************************************************************************** !
+
+subroutine PMWellAssignInitTempClosedLoop(this)
+  !
+  ! Assign an initial temperature to the fluid in a closed-loop well.
+  !
+
+  use Discretization_module
+
+  implicit none
+
+  class(pm_well_closed_loop_type) :: this
+
+  type(option_type), pointer :: option
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: icell
+  PetscInt :: local_id
+  PetscInt :: offset
+  PetscErrorCode :: ierr
+
+  if (.not. Initialized(this%initial_temperature) .or. &
+      .not. associated(this%well_cells_ghosted)) return
+
+  option => this%option
+  call VecGetArray(this%realization%field%flow_xx,vec_ptr, &
+                   ierr);CHKERRQ(ierr)
+  do icell = 1, size(this%well_cells_ghosted)
+    local_id = this%well_cells_ghosted(icell)
+    offset = (local_id-1)*option%nflowdof
+    vec_ptr(offset+THREE_INTEGER) = this%initial_temperature
+  enddo
+  call VecRestoreArray(this%realization%field%flow_xx,vec_ptr, &
+                       ierr);CHKERRQ(ierr)
+  call DiscretizationGlobalToLocal(this%realization%discretization, &
+                                   this%realization%field%flow_xx, &
+                                   this%realization%field%flow_xx_loc, &
+                                   NFLOWDOF)
+
+end subroutine PMWellAssignInitTempClosedLoop
 
 ! ************************************************************************** !
 
@@ -741,6 +783,7 @@ function PMWellUShapeCreate()
   pm_well%use_nusselt_entrance_factor = PETSC_FALSE
   pm_well%setup_complete = PETSC_FALSE
   pm_well%inlet_temperature = UNINITIALIZED_DOUBLE
+  pm_well%initial_temperature = UNINITIALIZED_DOUBLE
   pm_well%nusselt_laminar = 4.36d0
   pm_well%nusselt_z_ref = 1.d0
   pm_well%pipe_inner_diameter = UNINITIALIZED_DOUBLE
@@ -4342,7 +4385,7 @@ subroutine PMWellReadWell(pm_well,input,option,keyword,error_string,found)
             end select
             call InputErrorMsg(input,option,'WELL_INDEX_MODEL',error_string)
         !-----------------------------
-          case('INLET_TEMPERATURE','PIPE_INNER_DIAMETER', &
+          case('INLET_TEMPERATURE','INITIAL_TEMPERATURE','PIPE_INNER_DIAMETER', &
                'PIPE_WALL_THICKNESS','PIPE_WALL_THERMAL_CONDUCTIVITY', &
                'PIPE_FLOW_VELOCITY','PIPE_MASS_FLOW_RATE', &
                'USE_WELL_INDEX', &
@@ -4380,6 +4423,9 @@ subroutine PMWellReadWell(pm_well,input,option,keyword,error_string,found)
                     pm%use_nusselt_entrance_factor = PETSC_TRUE
                   case('INLET_TEMPERATURE')
                     call InputReadDouble(input,option,pm%inlet_temperature)
+                    call InputErrorMsg(input,option,word,error_string)
+                  case('INITIAL_TEMPERATURE')
+                    call InputReadDouble(input,option,pm%initial_temperature)
                     call InputErrorMsg(input,option,word,error_string)
                   case('PIPE_INNER_DIAMETER')
                     call InputReadDouble(input,option,pm%pipe_inner_diameter)

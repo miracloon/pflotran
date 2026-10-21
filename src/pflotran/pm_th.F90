@@ -381,6 +381,7 @@ subroutine PMTHSetup(this)
   use Discretization_module
   use Grid_module
   use Material_module
+  use PM_Well_class
   use TH_module
 
   implicit none
@@ -394,6 +395,12 @@ subroutine PMTHSetup(this)
          this%realization%option)
   call THSetup(this%realization,this%pm_well)
   call PMSubsurfaceFlowSetup(this)
+
+  select type(pm=>this%pm_well)
+    class is(pm_well_closed_loop_type)
+      call PMWellAssignInitTempClosedLoop(pm)
+      call this%UpdateAuxVars()
+  end select
 
   ! set up communicator
   select case(this%realization%discretization%itype)
