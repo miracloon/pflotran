@@ -857,6 +857,7 @@ subroutine PMERTPreSolve(this)
   ! Author: Glenn Hammond
   ! Date: 03/29/21
   !
+  use Discretization_module
   use Field_module
   use Global_Aux_module
   use Grid_module
@@ -883,6 +884,7 @@ subroutine PMERTPreSolve(this)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(zflow_auxvar_type), pointer :: zflow_auxvars(:,:)
   type(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscReal, pointer :: temp_loc_p(:)
   type(ert_auxvar_type), pointer :: ert_auxvars(:)
   class(reaction_rt_type), pointer :: reaction
   PetscInt :: ghosted_id,local_id
@@ -981,6 +983,18 @@ subroutine PMERTPreSolve(this)
     endif
   endif
 
+  ! The flow modes do not keep the global temperature current (it is only
+  ! filled for transport), so take it from the flow solution.
+  if (.not.option%flow%isothermal) then
+    call RealizationGetVariable(this%realization,this%realization%field%work, &
+                                TEMPERATURE,ZERO_INTEGER)
+    call DiscretizationGlobalToLocal(this%realization%discretization, &
+                                     this%realization%field%work, &
+                                     this%realization%field%work_loc,ONEDOF)
+    call VecGetArrayRead(this%realization%field%work_loc,temp_loc_p, &
+                         ierr);CHKERRQ(ierr)
+  endif
+
   ! Hoist the parameter id lookups out of the cell loop
   parameter_index = UNINITIALIZED_INTEGER
   parameter_0_index = UNINITIALIZED_INTEGER
@@ -1068,7 +1082,7 @@ subroutine PMERTPreSolve(this)
     endif
 
     if (.not.option%flow%isothermal) then
-      temp = patch%aux%Global%auxvars(ghosted_id)%temp
+      temp = temp_loc_p(ghosted_id)
       scaled_temp_diff = temp_coeff * (temp - temp_ref)
     endif
 
@@ -1090,6 +1104,11 @@ subroutine PMERTPreSolve(this)
       endif
     endif
   enddo
+
+  if (.not.option%flow%isothermal) then
+    call VecRestoreArrayRead(this%realization%field%work_loc,temp_loc_p, &
+                             ierr);CHKERRQ(ierr)
+  endif
 
   if (this%coupled_ert_flow_jacobian) then
     call VecRestoreArray(this%dconductivity_dsaturation, &
