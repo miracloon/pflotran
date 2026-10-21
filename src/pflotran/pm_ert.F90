@@ -900,7 +900,7 @@ subroutine PMERTPreSolve(this)
   PetscReal :: tracer_scale
   PetscReal :: cond_w_no_tracer
   PetscReal :: diff_water_cond
-  PetscReal :: relative_tracer_concentration
+  PetscReal :: dfluid_dconc
   PetscReal :: dstress,drho_geomech
   PetscReal :: cond_baseline
   PetscReal, pointer :: dcond_dsat_vec_ptr(:),dcond_dconc_vec_ptr(:)
@@ -995,6 +995,11 @@ subroutine PMERTPreSolve(this)
     cond_w = UNINITIALIZED_DOUBLE
     dcond_dsat = 0.d0
     dcond_dconc = 0.d0
+    dcond_dpor = 0.d0
+    dfluid_dconc = 0.d0
+    cond_w = cond_w_no_tracer
+    scaled_temp_diff = 0.d0
+    drho_geomech = 0.d0
     if (patch%imat(ghosted_id) <= 0) cycle
     if (option%iflowmode == ZFLOW_MODE) then
       por = zflow_auxvars(ZERO_INTEGER,ghosted_id)%effective_porosity
@@ -1012,16 +1017,15 @@ subroutine PMERTPreSolve(this)
         cond_w = cond_w_no_tracer + cond_sp
       else if (Initialized(this%max_tracer_concentration)) then
         species_id = 1
-        cond_sp = tracer_scale * diff_water_cond * &
-                  rt_auxvars(ghosted_id)%total(species_id,1)
-        cond_w = cond_w_no_tracer + cond_sp
+        call ERTFluidConductivity( &
+          rt_auxvars(ghosted_id)%total(species_id,1),tracer_scale, &
+          cond_w_no_tracer,diff_water_cond,PETSC_FALSE,cond_w,dfluid_dconc)
       endif
     endif
     if (associated(zflow_auxvars)) then
-      relative_tracer_concentration = tracer_scale * &
-        max(zflow_auxvars(ZERO_INTEGER,ghosted_id)%conc,0.d0)
-      cond_w = cond_w_no_tracer + &
-               relative_tracer_concentration * diff_water_cond
+      call ERTFluidConductivity(zflow_auxvars(ZERO_INTEGER,ghosted_id)%conc, &
+        tracer_scale,cond_w_no_tracer,diff_water_cond,PETSC_TRUE, &
+        cond_w,dfluid_dconc)
     endif
     if (Uninitialized(cond_w)) cond_w = cond_w_no_tracer
     ! compute conductivity
@@ -1072,7 +1076,7 @@ subroutine PMERTPreSolve(this)
                                          cond_c,empirical_law,cond, &
                                          temp_dependence, scaled_temp_diff, &
                                          drho_geomech, cond_baseline, &
-                                         tracer_scale,dcond_dsat,dcond_dconc, &
+                                         dfluid_dconc,dcond_dsat,dcond_dconc, &
                                          dcond_dpor, option)
     ert_auxvars(ghosted_id)%bulk_conductivity = cond
     ert_auxvars(ghosted_id)%fluid_conductivity = cond_w
