@@ -451,6 +451,12 @@ subroutine ERTCalculateMatrix(realization,M,compute_delM,debug)
         call PUMSetValuesLocal(M,1,ghosted_id-1,1,ghosted_id-1,coef_dn, &
                                ADD_VALUES,ierr);CHKERRQ(ierr)
 
+        if (compute_delM) then
+          ! d(coef_dn)/dcond_dn for the grounded boundary
+          ert_auxvars(ghosted_id)%delM(1) = &
+            ert_auxvars(ghosted_id)%delM(1) - area / dist_0
+        endif
+
       enddo
     endif
     boundary_condition => boundary_condition%next
@@ -488,7 +494,7 @@ contains
     ! Add values for self
     delM(1) = delM(1) + dcoef_self
     ! insert values for neighbor
-    delM(1+ineighbor) = dcoef_neighbor
+    delM(1+ineighbor) = delM(1+ineighbor) + dcoef_neighbor
 
     ! Not storing following as these can be retrieved from ineighbor's value
     !delM(1 + num_neighbor + 2*ineighbor -1) = dcoef_neighbor
