@@ -221,12 +221,12 @@ subroutine PMInversionInversionMeasurement(this,time,ierr)
             if (.not.measurements(imeasurement)%measured .and. &
                 Equal(measurements(imeasurement)%time,time)) then
               tempreal = UNINITIALIZED_DOUBLE
-              ghosted_id = this%realization%patch%grid%nL2G(local_id)
               select case(measurements(imeasurement)%iobs_var)
                 case(OBS_ERT_MEASUREMENT)
                   iert_measurement = measurements(imeasurement)%cell_id
                   tempreal = this%realization%survey%dsim(iert_measurement)
                 case default
+                  ghosted_id = this%realization%patch%grid%nL2G(local_id)
                   select case(measurements(imeasurement)%iobs_var)
                     case(OBS_LIQUID_PRESSURE)
                       ivar = LIQUID_PRESSURE

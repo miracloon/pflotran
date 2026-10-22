@@ -866,6 +866,10 @@ subroutine InvSubsurfSetupForwardRunLinkage(this)
     do i = 1, num_measurements
       if (this%inversion_aux%measurements(i)%iobs_var == &
           OBS_ERT_MEASUREMENT) then
+        if (this%inversion_aux%measurements(i)%cell_id < 1) then
+          call this%driver%PrintErrMsg('ERT_MEASUREMENT_ID must be positive &
+            &for measurement ' // trim(StringWrite(i)) // '.')
+        endif
         max_int(1) = max(max_int(1),this%inversion_aux%measurements(i)%cell_id)
       else
         if (Initialized(this%inversion_aux%measurements(i)%coordinate%x)) then
@@ -890,9 +894,9 @@ subroutine InvSubsurfSetupForwardRunLinkage(this)
         call this%driver%PrintErrMsg('The ERT_MEASUREMENT_ID assigned to a &
           &measurement is greater than the number of measurements in an &
           &survey (survey size = ' // &
-          trim(StringWrite(num_measurements)) // &
+          trim(StringWrite(size(this%realization%survey%dsim))) // &
           ' vs. maximum ERT_MEASUREMENT_ID = ' // &
-          trim(StringWrite(size(this%realization%survey%dsim))) // ').')
+          trim(StringWrite(max_int(1))) // ').')
       endif
     endif
     if (max_int(2) > patch%grid%nmax) then
