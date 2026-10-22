@@ -467,8 +467,7 @@ subroutine SimSubsurfJumpStart(this)
           option%io_buffer = 'Geophysics ERT calculation at time zero failed.'
           call PrintErrMsg(option)
         endif
-        this%geop_process_model_coupler%cur_waypoint => &
-          this%geop_process_model_coupler%cur_waypoint%next
+        ! StepDT has already advanced cur_waypoint
       endif
     endif
   endif

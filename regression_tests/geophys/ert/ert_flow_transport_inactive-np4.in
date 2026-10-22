@@ -14,7 +14,7 @@ SIMULATION
       OPTIONS
         COMPUTE_JACOBIAN
         CALC_FLUID_COND_FROM_CHEMISTRY
-        SURVEY_TIMES h 2.7778d-4 6.d0 12.d0 24.d0 # 2.778d-4 ~= 1 second
+        SURVEY_TIMES h 0.d0 6.d0 12.d0 24.d0
         OUTPUT_ALL_SURVEYS
       /
     /

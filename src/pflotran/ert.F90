@@ -530,11 +530,28 @@ end subroutine ERTCalculateMatrix
 
 subroutine ERTFluidConductivity(conc,tracer_scale,cond_water,contrast, &
                                  clamp_concentration,cond,dcond_dconc)
+  !
+  ! Calculates fluid conductivity from tracer concentration by linear mixing
+  ! between the background water and the tracer, and its derivative with
+  ! respect to concentration
+  !
+  ! Author: Piyoosh Jaysaval
+  ! Date: 10/21/26
+  !
 
   implicit none
 
-  PetscReal :: conc,tracer_scale,cond_water,contrast,cond,dcond_dconc
-  PetscBool :: clamp_concentration
+  PetscReal :: conc         ! tracer concentration
+  PetscReal :: tracer_scale ! 1 / max tracer concentration
+  PetscReal :: cond_water   ! background water conductivity
+  PetscReal :: contrast     ! tracer minus background water conductivity
+  PetscBool :: clamp_concentration ! use max(conc,0)
+
+  ! calculated fluid conductivity and dconductivity/dconcentration
+  PetscReal :: cond
+  PetscReal :: dcond_dconc
+
+  ! local variables
   PetscReal :: concentration
 
   concentration = conc

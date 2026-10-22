@@ -57,6 +57,7 @@ module PM_ERT_class
     procedure, public :: ReadSimulationOptionsBlock => PMERTReadSimOptionsBlock
     procedure, public :: SetRealization => PMERTSetRealization
     procedure, public :: InitializeRun => PMERTInitializeRun
+    procedure, public :: CanonicalizeSurveyTimes => PMERTCanonicalizeSurveyTimes
     procedure, public :: SetupSolvers => PMERTSetupSolvers
     procedure, public :: PreSolve => PMERTPreSolve
     procedure, public :: Solve => PMERTSolve
@@ -71,6 +72,7 @@ module PM_ERT_class
   public :: PMERTCreate, &
             PMERTInit, &
             PMERTCast, &
+            PMERTFindTime, &
             PMERTStrip
 
 contains
@@ -470,6 +472,69 @@ end subroutine PMERTSetRealization
 
 ! ************************************************************************** !
 
+function PMERTFindTime(first,time) result(match)
+  !
+  ! Returns the waypoint in a list at the given time: an exact match, else
+  ! the nearest within waypoint rounding error (null if none)
+  !
+  ! Author: Piyoosh Jaysaval
+  ! Date: 10/21/26
+  !
+  use Utility_module, only : Equal
+
+  implicit none
+
+  type(waypoint_type), pointer :: first,match,waypoint
+  PetscReal :: time
+  PetscReal :: distance,best_distance
+
+  nullify(match)
+  best_distance = MAX_DOUBLE
+  waypoint => first
+  do while (associated(waypoint))
+    if (Equal(time,waypoint%time)) then
+      match => waypoint
+      return
+    endif
+    if (time > 0.d0 .and. waypoint%time > 0.d0) then
+      distance = abs(time-waypoint%time)/max(time,waypoint%time)
+      ! Same rounding scale as WaypointInsertInList, not a survey window.
+      if (distance < 1.d-14 .and. distance < best_distance) then
+        match => waypoint
+        best_distance = distance
+      endif
+    endif
+    waypoint => waypoint%next
+  enddo
+
+end function PMERTFindTime
+
+! ************************************************************************** !
+
+subroutine PMERTCanonicalizeSurveyTimes(this,first)
+  !
+  ! Snaps survey times to the merged subsurface waypoint list, as a copied
+  ! survey waypoint may have merged into an existing output waypoint
+  !
+  ! Author: Piyoosh Jaysaval
+  ! Date: 10/21/26
+  !
+  implicit none
+
+  class(pm_ert_type) :: this
+  type(waypoint_type), pointer :: first,waypoint,match
+
+  waypoint => this%waypoint_list%first
+  do while (associated(waypoint))
+    match => PMERTFindTime(first,waypoint%time)
+    if (associated(match)) waypoint%time = match%time
+    waypoint => waypoint%next
+  enddo
+
+end subroutine PMERTCanonicalizeSurveyTimes
+
+! ************************************************************************** !
+
 recursive subroutine PMERTInitializeRun(this)
   !
   ! Initializes the time stepping
@@ -482,12 +547,14 @@ recursive subroutine PMERTInitializeRun(this)
   use Discretization_module
   use Grid_module
   use Input_Aux_module
+  use Inversion_Measurement_Aux_module
   use Material_Aux_module
   use Patch_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use String_module
   use Transport_Constraint_RT_module
+  use Utility_module, only : Equal
   use ZFlow_Aux_module
   use Variables_module, only : MATERIAL_ELECTRICAL_CONDUCTIVITY
 
@@ -509,6 +576,8 @@ recursive subroutine PMERTInitializeRun(this)
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
   type(patch_type), pointer :: patch
+  type(waypoint_type), pointer :: waypoint
+  type(inversion_measurement_aux_type), pointer :: measurements(:)
   PetscInt :: ispecies
   PetscBool :: flag
   PetscReal :: tempreal
@@ -525,6 +594,30 @@ recursive subroutine PMERTInitializeRun(this)
   reaction => patch%reaction
   grid => patch%grid
   option => this%option
+
+  if (associated(option%inversion)) then
+    if (option%inversion%coupled_flow_ert) then
+      measurements => patch%aux%inversion_aux%measurements
+      do i = 1, size(measurements)
+        if (measurements(i)%iobs_var /= OBS_ERT_MEASUREMENT) cycle
+        flag = PETSC_FALSE
+        waypoint => this%waypoint_list%first
+        do while (associated(waypoint))
+          if (measurements(i)%time > 0.d0 .and. &
+              Equal(measurements(i)%time,waypoint%time)) then
+            flag = PETSC_TRUE
+            exit
+          endif
+          waypoint => waypoint%next
+        enddo
+        if (.not.flag) then
+          option%io_buffer = 'ERT measurement time must match a positive &
+            &SURVEY_TIMES entry for measurement ' // trim(StringWrite(i))
+          call PrintErrMsg(option)
+        endif
+      enddo
+    endif
+  endif
 
   call DiscretizationCreateVector(this%realization%discretization,NGEOPDOF, &
                                   this%rhs,GLOBAL,option)

@@ -187,7 +187,6 @@ subroutine PMCGeophysicsStepDT(this,stop_flag)
   PetscLogDouble :: log_start_time
   PetscLogDouble :: log_end_time
   PetscInt :: linear_iterations_in_step
-  PetscReal, parameter :: survey_time_tol = 1.d-6
   PetscBool :: skip_survey
   PetscErrorCode :: ierr
 
@@ -205,9 +204,8 @@ subroutine PMCGeophysicsStepDT(this,stop_flag)
   skip_survey = PETSC_TRUE
   if (pm_ert%waypoint_list%num_waypoints > 0) then
     if (associated(this%cur_waypoint)) then
-      ! approximately equal within survey time tolerance
-      if (dabs(this%cur_waypoint%time-timestepper%target_time) / &
-          this%cur_waypoint%time < survey_time_tol) then
+      ! survey times are canonicalized in FactorySubsurfSetupWaypointList
+      if (Equal(this%cur_waypoint%time,timestepper%target_time)) then
         skip_survey = PETSC_FALSE
         this%cur_waypoint => this%cur_waypoint%next
       endif

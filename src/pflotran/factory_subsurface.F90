@@ -678,6 +678,7 @@ subroutine FactorySubsurfSetupWaypointList(simulation)
   use Checkpoint_module
   use Realization_Subsurface_class
   use Option_module
+  use PM_ERT_class, only : pm_ert_type, PMERTCast, PMERTFindTime
   use Waypoint_module
   use Debug_module
 
@@ -686,7 +687,9 @@ subroutine FactorySubsurfSetupWaypointList(simulation)
   class(simulation_subsurface_type) :: simulation
 
   class(realization_subsurface_type), pointer :: realization
-  type(waypoint_list_type), pointer :: sync_waypoint_list
+  class(pm_ert_type), pointer :: pm_ert
+  type(waypoint_list_type), pointer :: sync_waypoint_list,outer_waypoint_list
+  type(waypoint_type), pointer :: waypoint,match,next_waypoint
   type(debug_type), pointer :: debug
   type(option_type), pointer :: option
 
@@ -716,6 +719,26 @@ subroutine FactorySubsurfSetupWaypointList(simulation)
                                       option)
   call WaypointListFindDuplicateTimes(simulation%waypoint_list_subsurface, &
                                       option)
+
+  if (associated(simulation%geop_process_model_coupler)) then
+    pm_ert => PMERTCast(simulation%geop_process_model_coupler%pm_ptr%pm)
+    ! survey copies may have merged with rounding-equivalent waypoints
+    call pm_ert%CanonicalizeSurveyTimes( &
+      simulation%waypoint_list_subsurface%first)
+    ! rebuild the outer list with the canonical times
+    outer_waypoint_list => simulation%waypoint_list_outer
+    waypoint => outer_waypoint_list%first
+    nullify(outer_waypoint_list%first,outer_waypoint_list%last)
+    outer_waypoint_list%num_waypoints = 0
+    do while (associated(waypoint))
+      next_waypoint => waypoint%next
+      nullify(waypoint%prev,waypoint%next)
+      match => PMERTFindTime(pm_ert%waypoint_list%first,waypoint%time)
+      if (associated(match)) waypoint%time = match%time
+      call WaypointInsertInList(waypoint,outer_waypoint_list,option)
+      waypoint => next_waypoint
+    enddo
+  endif
 
   ! debugging output
   nullify(debug)

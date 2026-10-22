@@ -257,6 +257,12 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list,option)
   waypoint => waypoint_list%first
   if (associated(waypoint)) then ! list exists
     if (new_waypoint%time < waypoint%time) then
+      ! apply the in-list rounding tolerance before inserting at the head
+      if (dabs((new_waypoint%time-waypoint%time)/ &
+                max(waypoint%time,1.d-40)) < 1.d-14) then
+        call WaypointMerge(waypoint,new_waypoint)
+        return ! do not increment num_waypoints at bottom
+      endif
       ! insert at beginning of list
       waypoint_list%first => new_waypoint
       new_waypoint%next => waypoint

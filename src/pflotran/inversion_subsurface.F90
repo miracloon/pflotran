@@ -1156,6 +1156,7 @@ subroutine InvSubsurfConnectToForwardRun(this)
   use Factory_Subsurface_module
   use Init_Subsurface_module
   use Material_module
+  use PM_ERT_class, only : pm_ert_type, PMERTCast, PMERTFindTime
   use String_module
   use Timestepper_Base_class, only : TS_STOP_END_SIMULATION
   use Utility_module
@@ -1166,7 +1167,8 @@ subroutine InvSubsurfConnectToForwardRun(this)
 
   PetscReal :: final_time
   PetscInt :: i, sync_count
-  type(waypoint_type), pointer :: waypoint
+  type(waypoint_type), pointer :: waypoint,match
+  class(pm_ert_type), pointer :: pm_ert
   type(inversion_perturbation_type), pointer :: perturbation
   PetscReal, pointer :: real_array(:)
   PetscReal, pointer :: vec_ptr(:)
@@ -1175,6 +1177,12 @@ subroutine InvSubsurfConnectToForwardRun(this)
   PetscErrorCode :: ierr
 
   perturbation => this%inversion_aux%perturbation
+
+  nullify(pm_ert)
+  if (this%inversion_option%coupled_flow_ert) then
+    pm_ert => PMERTCast(this%forward_simulation% &
+                          geop_process_model_coupler%pm_ptr%pm)
+  endif
 
   ! the allocation of sync_times come before the call to
   ! InvCoupledAllocateSolnVecs()
@@ -1188,6 +1196,16 @@ subroutine InvSubsurfConnectToForwardRun(this)
     do i = 1, size(this%inversion_aux%measurements)
       if (Uninitialized(this%inversion_aux%measurements(i)%time)) then
         this%inversion_aux%measurements(i)%time = final_time
+      endif
+      ! snap ERT measurement times to the canonical survey times
+      if (associated(pm_ert)) then
+        if (this%inversion_aux%measurements(i)%iobs_var == &
+            OBS_ERT_MEASUREMENT) then
+          match => PMERTFindTime(pm_ert%waypoint_list%first, &
+                                 this%inversion_aux%measurements(i)%time)
+          if (associated(match)) &
+            this%inversion_aux%measurements(i)%time = match%time
+        endif
       endif
       if (this%inversion_aux%measurements(i)%time > final_time) then
         iflag = PETSC_TRUE
