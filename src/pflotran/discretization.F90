@@ -1179,10 +1179,20 @@ subroutine DiscretizationLocalToGlobalAdd(discretization,local_vec,global_vec,dm
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
-  call DMLocalToGlobalBegin(dm_ptr%dm,local_vec,ADD_VALUES,global_vec, &
-                            ierr);CHKERRQ(ierr)
-  call DMLocalToGlobalEnd(dm_ptr%dm,local_vec,ADD_VALUES,global_vec, &
-                          ierr);CHKERRQ(ierr)
+  select case(discretization%itype)
+    case(UNSTRUCTURED_GRID)
+      ! the shell DM's local-to-global scatter skips ghost cells; add them
+      ! to their owners through the reverse global-to-local scatter
+      call VecScatterBegin(dm_ptr%ugdm%scatter_gtol,local_vec,global_vec, &
+                           ADD_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_gtol,local_vec,global_vec, &
+                         ADD_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
+    case default
+      call DMLocalToGlobalBegin(dm_ptr%dm,local_vec,ADD_VALUES,global_vec, &
+                                ierr);CHKERRQ(ierr)
+      call DMLocalToGlobalEnd(dm_ptr%dm,local_vec,ADD_VALUES,global_vec, &
+                              ierr);CHKERRQ(ierr)
+  end select
 
 end subroutine DiscretizationLocalToGlobalAdd
 
