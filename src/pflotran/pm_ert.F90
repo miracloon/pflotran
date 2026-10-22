@@ -1259,6 +1259,7 @@ subroutine PMERTSolve(this,time,ierr)
   PetscReal :: val
   PetscReal :: average_cond
   PetscReal, pointer :: vec_ptr(:)
+  PetscBool :: solve_ghost
   character(len=MAXSTRINGLENGTH) :: string
 
   !PetscLogDouble :: log_start_time
@@ -1296,11 +1297,20 @@ subroutine PMERTSolve(this,time,ierr)
   nelec = survey%num_electrode
   this%linear_iterations_in_step = 0
 
+  ! Pole receivers with a ghost return need the ghost solution K^-1 e_g in the
+  ! Jacobian (its own sink overwrites its source in the RHS below)
+  solve_ghost = PETSC_FALSE
+  if (survey%ghost_electrode_exist .and. &
+      this%option%geophysics%compute_jacobian) then
+    solve_ghost = any((survey%config(3,:) == 0) .neqv. &
+                      (survey%config(4,:) == 0))
+  endif
+
   this%option%io_buffer = '  Solving for electrode:'
   call PrintMsgNoAdvance(this%option)
   do ielec=1,nelec
     ! cycle if it's a ghost electrode
-    if (survey%flag_electrode(ielec) == -1) cycle
+    if (survey%flag_electrode(ielec) == -1 .and. .not.solve_ghost) cycle
     write(this%option%io_buffer,'(x,a)') trim(StringWrite(ielec))
     call PrintMsgNoAdvance(this%option)
     if (this%analytical_potential) then
@@ -1551,6 +1561,11 @@ subroutine PMERTBuildJacobian(this)
     ib = survey%config(2,idata)
     im = survey%config(3,idata)
     in = survey%config(4,idata)
+    ! a pole receiver is referenced to the ghost solution K^-1 e_g
+    if (survey%ghost_electrode_exist) then
+      if (im == 0 .and. in /= 0) im = survey%ghost_electrode_id
+      if (in == 0 .and. im /= 0) in = survey%ghost_electrode_id
+    endif
 
     do local_id=1,grid%nlmax
 
@@ -1735,6 +1750,11 @@ subroutine PMERTBuildCoupledJacobian(this)
           ib = survey%config(2,idata)
           im = survey%config(3,idata)
           in = survey%config(4,idata)
+          ! a pole receiver is referenced to the ghost solution K^-1 e_g
+          if (survey%ghost_electrode_exist) then
+            if (im == 0 .and. in /= 0) im = survey%ghost_electrode_id
+            if (in == 0 .and. im /= 0) in = survey%ghost_electrode_id
+          endif
 
           imeasurement = idata + (isurvey - 1) * ndata
 
