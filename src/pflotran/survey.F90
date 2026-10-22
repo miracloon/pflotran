@@ -373,7 +373,7 @@ subroutine SurveyWriteERT(survey,time_suffix,option)
   write(fid,'(a)',advance='no') trim(adjustl(word))
   write(fid,'(15x,a)',advance="yes") "number of measurements"
   do i=1,survey%num_measurement
-    write(fid,"(i10,4i10,2es15.5)") i,survey%config(1:4,i), &
+    write(fid,"(i10,4i10,2es24.16)") i,survey%config(1:4,i), &
                   survey%dsim(i),0.05*abs(survey%dsim(i))+0.01
   end do
 
