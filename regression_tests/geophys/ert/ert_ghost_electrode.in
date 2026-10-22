@@ -1,4 +1,4 @@
-#Description: 3D Geophysics Electrical Resistivity Tomography problem with a ghost return electrode and pole receivers
+#Description: 3D Geophysics Electrical Resistivity Tomography problem with a ghost return electrode, pole receivers and an electrode at a cell center
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
@@ -21,6 +21,7 @@ NUMERICAL_METHODS GEOPHYSICS
     SOLVER BCGS
     PC_TYPE BLOCK_JACOBI
     ATOL 1.d-12
+    RTOL 1.d-12
   /
 END
 

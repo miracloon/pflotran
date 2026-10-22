@@ -1388,7 +1388,22 @@ subroutine PMERTSolve(this,time,ierr)
     call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr);CHKERRQ(ierr)
     this%linear_iterations_in_step = this%linear_iterations_in_step + &
                                      num_linear_iterations
+    if (ksp_reason%v < 0) then
+      write(string,'(i0)') ksp_reason%v
+      call PrintMsg(this%option,'')
+      this%option%io_buffer = 'ERT linear solve for electrode ' // &
+        trim(StringWrite(ielec)) // ' did not converge (KSP reason ' // &
+        trim(string) // ' after ' // &
+        trim(StringWrite(num_linear_iterations)) // ' iterations).'
+      call PrintMsg(this%option)
+      solve_ierr = 1
+      exit
+    endif
   enddo
+  if (solve_ierr /= 0) then
+    ierr = solve_ierr
+    return
+  endif
   call PrintMsg(this%option,'')
 
   ! Assemble solutions

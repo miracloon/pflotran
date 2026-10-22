@@ -734,6 +734,7 @@ subroutine ERTCalculateAnalyticPotential(realization,ielec,average_conductivity)
   ! Date: 02/05/21
   !
   use Realization_Subsurface_class
+  use Material_Aux_module
   use Option_module
   use Grid_module
   use Patch_module
@@ -750,6 +751,7 @@ subroutine ERTCalculateAnalyticPotential(realization,ielec,average_conductivity)
   type(grid_type), pointer :: grid
   type(survey_type), pointer :: survey
   type(ert_auxvar_type), pointer :: ert_auxvars(:)
+  type(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscReal :: cond
   PetscReal :: r,epos(3),cell_center(3)
@@ -762,6 +764,7 @@ subroutine ERTCalculateAnalyticPotential(realization,ielec,average_conductivity)
   patch => realization%patch
   grid => patch%grid
   ert_auxvars => patch%aux%ERT%auxvars
+  material_auxvars => patch%aux%Material%auxvars
 
   if (present(average_conductivity)) then
     cond = average_conductivity
@@ -790,6 +793,9 @@ subroutine ERTCalculateAnalyticPotential(realization,ielec,average_conductivity)
     r = norm2(epos - cell_center)
     ! Add small value to avoid overshooting at electrode position
     r = r + 1.0d-15
+    ! Limit to half the cell size so the potential stays finite at an
+    ! electrode located at the cell center
+    r = max(r,0.5d0*material_auxvars(ghosted_id)%volume**(1.d0/3.d0))
     ert_auxvars(ghosted_id)%potential(ielec) = 1 / (2*pi*r*cond)
   enddo
 
