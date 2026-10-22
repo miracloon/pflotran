@@ -1,0 +1,13 @@
+PARAMETERS
+  BOUNDS PERMEABILITY 0.d0 1.d-5 # should be overridden by the BOUNDS below
+  PARAMETER
+    NAME PERMEABILITY
+    MATERIAL soil1
+    BOUNDS 1.d-12 1.d-8
+  /
+  PARAMETER
+    NAME PERMEABILITY
+    MATERIAL soil2
+    BOUNDS 1.d-15 1.d-11
+  /
+/

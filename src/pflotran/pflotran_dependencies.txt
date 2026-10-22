@@ -2182,6 +2182,7 @@ pm_ert.o : \
   input_aux.o \
   inversion_aux.o \
   inversion_coupled_aux.o \
+  inversion_measurement_aux.o \
   inversion_parameter.o \
   material_aux.o \
   option.o \

@@ -345,6 +345,13 @@ subroutine PMERTSetup(this)
 
   option => this%option
 
+  ! coupled flow-ERT sensitivities require delM
+  if (associated(option%inversion)) then
+    if (option%inversion%coupled_flow_ert) then
+      option%geophysics%compute_jacobian = PETSC_TRUE
+    endif
+  endif
+
   call this%SetRealization()
   call ERTSetup(this%realization)
 
@@ -1676,6 +1683,7 @@ subroutine PMERTBuildCoupledJacobian(this)
   use Patch_module
   use Grid_module
   use Inversion_Coupled_Aux_module
+  use Inversion_Measurement_Aux_module
   use Inversion_Parameter_module
   use Inversion_Aux_module
   use String_module
@@ -1696,6 +1704,7 @@ subroutine PMERTBuildCoupledJacobian(this)
   type(ert_auxvar_type), pointer :: ert_auxvars(:)
   class(timer_type), pointer ::timer
   type(inversion_coupled_soln_type), pointer :: solutions(:)
+  type(inversion_measurement_aux_type), pointer :: measurements(:)
   type(inversion_parameter_type), pointer :: parameters(:)
 
   PetscInt, pointer :: cell_neighbors(:,:)
@@ -1704,7 +1713,7 @@ subroutine PMERTBuildCoupledJacobian(this)
   PetscReal, pointer :: dcond_dsat_vec_ptr(:),dcond_dconc_vec_ptr(:)
   PetscReal, pointer :: dcond_dpor_vec_ptr(:)
   PetscReal :: jacob,coupled_jacob
-  PetscInt :: idata,ndata,imeasurement
+  PetscInt :: idata,imeasurement
   PetscInt :: ia,ib,im,in,isurvey,iparam
   PetscInt :: local_id,ghosted_id
   PetscInt :: inbr,num_neighbors
@@ -1720,6 +1729,20 @@ subroutine PMERTBuildCoupledJacobian(this)
   ert_auxvars => patch%aux%ERT%auxvars
   cell_neighbors => grid%cell_neighbors_local_ghosted
 
+  ! skip surveys without requested measurements
+  if (this%coupled_ert_flow_jacobian) then
+    measurements => patch%aux%inversion_aux%measurements
+    iflag = PETSC_FALSE
+    do imeasurement = 1, size(measurements)
+      if (measurements(imeasurement)%iobs_var /= OBS_ERT_MEASUREMENT) cycle
+      if (Equal(measurements(imeasurement)%time,option%time)) then
+        iflag = PETSC_TRUE
+        exit
+      endif
+    enddo
+    if (.not.iflag) return
+  endif
+
   call MPI_Barrier(option%mycomm,ierr);CHKERRQ(ierr)
   timer => TimerCreate()
   call timer%Start()
@@ -1727,8 +1750,6 @@ subroutine PMERTBuildCoupledJacobian(this)
   if (OptionPrintToScreen(this%option)) then
     write(*,'(/," --> Building partial ERT FLOW Coupled Jacobian matrix:")')
   endif
-
-  ndata = survey%num_measurement
 
   if (this%coupled_ert_flow_jacobian) then
     solutions => patch%aux%inversion_aux%coupled_aux%solutions
@@ -1758,7 +1779,10 @@ subroutine PMERTBuildCoupledJacobian(this)
                                   dconc_dparam_ptr,ierr);CHKERRQ(ierr)
         endif
 
-        do idata=1,ndata
+        do imeasurement = 1, size(measurements)
+          if (measurements(imeasurement)%iobs_var /= OBS_ERT_MEASUREMENT) cycle
+          if (.not.Equal(measurements(imeasurement)%time,option%time)) cycle
+          idata = measurements(imeasurement)%cell_id
 
           ! for A and B electrodes
           ia = survey%config(1,idata)
@@ -1770,8 +1794,6 @@ subroutine PMERTBuildCoupledJacobian(this)
             if (im == 0 .and. in /= 0) im = survey%ghost_electrode_id
             if (in == 0 .and. im /= 0) in = survey%ghost_electrode_id
           endif
-
-          imeasurement = idata + (isurvey - 1) * ndata
 
           jacob = 0.d0
           coupled_jacob = 0.d0
