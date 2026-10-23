@@ -38,12 +38,7 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
   character(len=MAXWORDLENGTH) :: kd_units
   character(len=MAXWORDLENGTH) :: multi_kd_units
   character(len=MAXSTRINGLENGTH) :: error_string
-  PetscBool :: kd_specified
-  PetscBool :: langmuir_b_specified
-  PetscBool :: freundlich_n_specified
-  PetscBool :: type_specified
   PetscInt :: ikd_units, imulti_kd_units
-  PetscInt :: specified_itype
 
   type(isotherm_link_type), pointer :: isotherm_rxn, prev_isotherm_rxn
   type(isotherm_link_type), pointer :: sec_cont_isotherm_rxn, &
@@ -74,21 +69,22 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
     call InputErrorMsg(input,option,'species name',error_string)
     kd_units = ''
     multi_kd_units = ''
-    kd_specified = PETSC_FALSE
-    langmuir_b_specified = PETSC_FALSE
-    freundlich_n_specified = PETSC_FALSE
-    type_specified = PETSC_FALSE
-    specified_itype = SORPTION_LINEAR
     isotherm%neqkdrxn = isotherm%neqkdrxn + 1
     isotherm_rxn => ReactionIsothermCreateLink()
     isotherm_rxn%species_name = trim(word)
-    ! Linear is the default. Set it once, before the keyword loop.
-    isotherm_rxn%itype = SORPTION_LINEAR
+    ! CreateLink stores 0, which is a valid coefficient. Mark the values
+    ! unread so the checks below can see which cards were present.
+    ! itype stays 0 until TYPE or a parameter card selects it. Linear is
+    ! the default when none does.
+    isotherm_rxn%Kd = UNINITIALIZED_DOUBLE
+    isotherm_rxn%Langmuir_B = UNINITIALIZED_DOUBLE
+    isotherm_rxn%Freundlich_N = UNINITIALIZED_DOUBLE
     if (option%use_sc) then
       sec_cont_isotherm_rxn => ReactionIsothermCreateLink()
       sec_cont_isotherm_rxn%species_name = isotherm_rxn%species_name
       sec_cont_isotherm_rxn%Kd = UNINITIALIZED_DOUBLE
-      sec_cont_isotherm_rxn%itype = SORPTION_LINEAR
+      sec_cont_isotherm_rxn%Langmuir_B = UNINITIALIZED_DOUBLE
+      sec_cont_isotherm_rxn%Freundlich_N = UNINITIALIZED_DOUBLE
     endif
 
     call InputPushBlock(input,option)
@@ -116,8 +112,6 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
               call InputKeywordUnrecognized(input,word, &
                                       trim(error_string)//',TYPE',option)
           end select
-          type_specified = PETSC_TRUE
-          specified_itype = isotherm_rxn%itype
           if (option%use_sc) then
             sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
           endif
@@ -127,7 +121,6 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
         case('DISTRIBUTION_COEFFICIENT')
           call InputReadDouble(input,option,isotherm_rxn%Kd)
           call InputErrorMsg(input,option,word,error_string)
-          kd_specified = PETSC_TRUE
           call InputReadWord(input,option,word,PETSC_TRUE)
           if (.not.InputError(input)) kd_units = trim(word)
         ! S.Karra, 02/20/2014
@@ -145,20 +138,15 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
         case('LANGMUIR_B')
           call InputReadDouble(input,option,isotherm_rxn%Langmuir_B)
           call InputErrorMsg(input,option,word,error_string)
-          langmuir_b_specified = PETSC_TRUE
-          isotherm_rxn%itype = SORPTION_LANGMUIR
           if (option%use_sc) then
             sec_cont_isotherm_rxn%Langmuir_B = isotherm_rxn%Langmuir_B
-            sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
           endif
         case('FREUNDLICH_N')
           call InputReadDouble(input,option,isotherm_rxn%Freundlich_N)
           call InputErrorMsg(input,option,word,error_string)
-          freundlich_n_specified = PETSC_TRUE
-          isotherm_rxn%itype = SORPTION_FREUNDLICH
           if (option%use_sc) then
-            sec_cont_isotherm_rxn%Freundlich_N = isotherm_rxn%Freundlich_N
-            sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
+            sec_cont_isotherm_rxn%Freundlich_N = &
+              isotherm_rxn%Freundlich_N
           endif
         case('KD_MINERAL_NAME')
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -170,46 +158,54 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
     enddo
     call InputPopBlock(input,option)
 
-    if (langmuir_b_specified .and. freundlich_n_specified) then
+    if (.not.Uninitialized(isotherm_rxn%Langmuir_B) .and. &
+        .not.Uninitialized(isotherm_rxn%Freundlich_N)) then
       option%io_buffer = 'LANGMUIR_B and FREUNDLICH_N cannot both be &
         &set for isotherm reaction "' // &
         trim(isotherm_rxn%species_name) // '".'
       call PrintErrMsg(option)
     endif
-    ! An explicit TYPE wins over the parameter cards. The checks below
-    ! then require the matching coefficient and reject the other one.
-    if (type_specified) then
-      isotherm_rxn%itype = specified_itype
+    ! No TYPE card. LANGMUIR_B or FREUNDLICH_N selects that isotherm.
+    ! Otherwise linear is the default.
+    if (isotherm_rxn%itype == 0) then
+      if (.not.Uninitialized(isotherm_rxn%Langmuir_B)) then
+        isotherm_rxn%itype = SORPTION_LANGMUIR
+      elseif (.not.Uninitialized(isotherm_rxn%Freundlich_N)) then
+        isotherm_rxn%itype = SORPTION_FREUNDLICH
+      else
+        isotherm_rxn%itype = SORPTION_LINEAR
+      endif
     endif
     select case(isotherm_rxn%itype)
       case(SORPTION_LINEAR)
-        if (langmuir_b_specified .or. freundlich_n_specified) then
+        if (.not.Uninitialized(isotherm_rxn%Langmuir_B) .or. &
+            .not.Uninitialized(isotherm_rxn%Freundlich_N)) then
           option%io_buffer = 'LINEAR isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '" cannot include &
             &LANGMUIR_B or FREUNDLICH_N.'
           call PrintErrMsg(option)
         endif
       case(SORPTION_LANGMUIR)
-        if (freundlich_n_specified) then
+        if (.not.Uninitialized(isotherm_rxn%Freundlich_N)) then
           option%io_buffer = 'LANGMUIR isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '" cannot include &
             &FREUNDLICH_N.'
           call PrintErrMsg(option)
         endif
-        if (.not.langmuir_b_specified) then
+        if (Uninitialized(isotherm_rxn%Langmuir_B)) then
           option%io_buffer = 'LANGMUIR_B must be specified for &
             &LANGMUIR isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '".'
           call PrintErrMsg(option)
         endif
       case(SORPTION_FREUNDLICH)
-        if (langmuir_b_specified) then
+        if (.not.Uninitialized(isotherm_rxn%Langmuir_B)) then
           option%io_buffer = 'FREUNDLICH isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '" cannot include &
             &LANGMUIR_B.'
           call PrintErrMsg(option)
         endif
-        if (.not.freundlich_n_specified) then
+        if (Uninitialized(isotherm_rxn%Freundlich_N)) then
           option%io_buffer = 'FREUNDLICH_N must be specified for &
             &FREUNDLICH isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '".'
@@ -226,14 +222,27 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
           trim(isotherm_rxn%species_name) // '".'
         call PrintErrMsg(option)
     end select
-    if (.not.kd_specified) then
+    if (Uninitialized(isotherm_rxn%Kd)) then
       option%io_buffer = 'DISTRIBUTION_COEFFICIENT must be specified &
         &for isotherm reaction "' // &
         trim(isotherm_rxn%species_name) // '".'
       call PrintErrMsg(option)
     endif
+    ! Unused coefficients are stored as zero, matching CreateLink.
+    if (Uninitialized(isotherm_rxn%Langmuir_B)) then
+      isotherm_rxn%Langmuir_B = 0.d0
+    endif
+    if (Uninitialized(isotherm_rxn%Freundlich_N)) then
+      isotherm_rxn%Freundlich_N = 0.d0
+    endif
     if (associated(sec_cont_isotherm_rxn)) then
       sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
+      if (Uninitialized(sec_cont_isotherm_rxn%Langmuir_B)) then
+        sec_cont_isotherm_rxn%Langmuir_B = 0.d0
+      endif
+      if (Uninitialized(sec_cont_isotherm_rxn%Freundlich_N)) then
+        sec_cont_isotherm_rxn%Freundlich_N = 0.d0
+      endif
       if (UnInitialized(sec_cont_isotherm_rxn%Kd)) then
         option%io_buffer = 'SEC_CONT_DISTRIBUTION_COEFFICIENT must be &
           &specified for all ISOTHERM_REACTIONs when using &
