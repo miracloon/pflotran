@@ -775,27 +775,27 @@ subroutine RTComputeMassBalance(realization,num_cells,max_size,sum_mol,cell_ids)
   enddo
 
   if (reaction%print%total_mass_kg) then
-    ! [mol] * [g/mol] * [kg/g] = [kg]
+    ! [mol] * [kg/mol] = [kg]
     sum_mol_aq(1:naqcomp) = sum_mol_aq(1:naqcomp) * &
-      reaction%primary_spec_molar_wt(:) * 1.d-3
+      reaction%primary_spec_molar_wt(:)
     sum_mol_sb(1:naqcomp) = sum_mol_sb(1:naqcomp) * &
-      reaction%primary_spec_molar_wt(:) * 1.d-3
+      reaction%primary_spec_molar_wt(:)
     sum_mol_mnrl(1:naqcomp) = sum_mol_mnrl(1:naqcomp) * &
-      reaction%primary_spec_molar_wt(:) * 1.d-3
+      reaction%primary_spec_molar_wt(:)
     sum_mol_gas(1:naqcomp) = sum_mol_gas(1:naqcomp) * &
-      reaction%primary_spec_molar_wt(:) * 1.d-3
+      reaction%primary_spec_molar_wt(:)
     do imnrl = 1, reaction%mineral%nkinmnrl
       sum_mol_by_mnrl(imnrl) = sum_mol_by_mnrl(imnrl) * &
-        reaction%mineral%kinmnrl_molar_wt(imnrl) * 1.d-3
+        reaction%mineral%kinmnrl_molar_wt(imnrl)
     enddo
     do i = 1, reaction%immobile%nimmobile
       sum_mol_by_im(i) = sum_mol_by_im(i) * &
-        reaction%immobile%list%molar_weight * 1.d-3
+        reaction%immobile%list%molar_weight
     enddo
     if (reaction%gas%nactive_gas > 0) then
       sum_mol_by_gas(1:reaction%gas%nactive_gas) = &
         sum_mol_by_gas(1:reaction%gas%nactive_gas) * &
-        reaction%gas%actmolarwt * 1.d-3
+        reaction%gas%actmolarwt
     endif
   endif
 
