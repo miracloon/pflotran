@@ -39,6 +39,7 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
   character(len=MAXWORDLENGTH) :: multi_kd_units
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscInt :: ikd_units, imulti_kd_units
+  PetscReal :: sec_cont_kd
 
   type(isotherm_link_type), pointer :: isotherm_rxn, prev_isotherm_rxn
   type(isotherm_link_type), pointer :: sec_cont_isotherm_rxn, &
@@ -69,23 +70,13 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
     call InputErrorMsg(input,option,'species name',error_string)
     kd_units = ''
     multi_kd_units = ''
+    sec_cont_kd = UNINITIALIZED_DOUBLE
     isotherm%neqkdrxn = isotherm%neqkdrxn + 1
     isotherm_rxn => ReactionIsothermCreateLink()
     isotherm_rxn%species_name = trim(word)
-    ! CreateLink stores 0, which is a valid coefficient. Mark the values
-    ! unread so the checks below can see which cards were present.
-    ! itype stays 0 until TYPE or a parameter card selects it. Linear is
-    ! the default when none does.
     isotherm_rxn%Kd = UNINITIALIZED_DOUBLE
     isotherm_rxn%Langmuir_B = UNINITIALIZED_DOUBLE
     isotherm_rxn%Freundlich_N = UNINITIALIZED_DOUBLE
-    if (option%use_sc) then
-      sec_cont_isotherm_rxn => ReactionIsothermCreateLink()
-      sec_cont_isotherm_rxn%species_name = isotherm_rxn%species_name
-      sec_cont_isotherm_rxn%Kd = UNINITIALIZED_DOUBLE
-      sec_cont_isotherm_rxn%Langmuir_B = UNINITIALIZED_DOUBLE
-      sec_cont_isotherm_rxn%Freundlich_N = UNINITIALIZED_DOUBLE
-    endif
 
     call InputPushBlock(input,option)
     do
@@ -112,9 +103,6 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
               call InputKeywordUnrecognized(input,word, &
                                       trim(error_string)//',TYPE',option)
           end select
-          if (option%use_sc) then
-            sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
-          endif
         case('KD')
           call InputKeywordDeprecated('KD', &
                                'DISTRIBUTION_COEFFICIENT',option)
@@ -126,28 +114,16 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
         ! S.Karra, 02/20/2014
         case('SEC_CONT_DISTRIBUTION_COEFFICIENT', &
               'SEC_CONT_KD')
-          if (.not.associated(sec_cont_isotherm_rxn)) then
-            option%io_buffer = 'Make sure MULTIPLE_CONTINUUM &
-              &keyword is set, SECONDARY_CONTINUUM_KD.'
-            call PrintErrMsg(option)
-          endif
-          call InputReadDouble(input,option,sec_cont_isotherm_rxn%Kd)
+          call InputReadDouble(input,option,sec_cont_kd)
           call InputErrorMsg(input,option,word,error_string)
           call InputReadWord(input,option,word,PETSC_TRUE)
           if (.not.InputError(input)) multi_kd_units = trim(word)
         case('LANGMUIR_B')
           call InputReadDouble(input,option,isotherm_rxn%Langmuir_B)
           call InputErrorMsg(input,option,word,error_string)
-          if (option%use_sc) then
-            sec_cont_isotherm_rxn%Langmuir_B = isotherm_rxn%Langmuir_B
-          endif
         case('FREUNDLICH_N')
           call InputReadDouble(input,option,isotherm_rxn%Freundlich_N)
           call InputErrorMsg(input,option,word,error_string)
-          if (option%use_sc) then
-            sec_cont_isotherm_rxn%Freundlich_N = &
-              isotherm_rxn%Freundlich_N
-          endif
         case('KD_MINERAL_NAME')
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,word,error_string)
@@ -158,8 +134,8 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
     enddo
     call InputPopBlock(input,option)
 
-    if (.not.Uninitialized(isotherm_rxn%Langmuir_B) .and. &
-        .not.Uninitialized(isotherm_rxn%Freundlich_N)) then
+    if (Initialized(isotherm_rxn%Langmuir_B) .and. &
+        Initialized(isotherm_rxn%Freundlich_N)) then
       option%io_buffer = 'LANGMUIR_B and FREUNDLICH_N cannot both be &
         &set for isotherm reaction "' // &
         trim(isotherm_rxn%species_name) // '".'
@@ -168,9 +144,9 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
     ! No TYPE card. LANGMUIR_B or FREUNDLICH_N selects that isotherm.
     ! Otherwise linear is the default.
     if (isotherm_rxn%itype == 0) then
-      if (.not.Uninitialized(isotherm_rxn%Langmuir_B)) then
+      if (Initialized(isotherm_rxn%Langmuir_B)) then
         isotherm_rxn%itype = SORPTION_LANGMUIR
-      elseif (.not.Uninitialized(isotherm_rxn%Freundlich_N)) then
+      elseif (Initialized(isotherm_rxn%Freundlich_N)) then
         isotherm_rxn%itype = SORPTION_FREUNDLICH
       else
         isotherm_rxn%itype = SORPTION_LINEAR
@@ -178,15 +154,15 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
     endif
     select case(isotherm_rxn%itype)
       case(SORPTION_LINEAR)
-        if (.not.Uninitialized(isotherm_rxn%Langmuir_B) .or. &
-            .not.Uninitialized(isotherm_rxn%Freundlich_N)) then
+        if (Initialized(isotherm_rxn%Langmuir_B) .or. &
+            Initialized(isotherm_rxn%Freundlich_N)) then
           option%io_buffer = 'LINEAR isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '" cannot include &
             &LANGMUIR_B or FREUNDLICH_N.'
           call PrintErrMsg(option)
         endif
       case(SORPTION_LANGMUIR)
-        if (.not.Uninitialized(isotherm_rxn%Freundlich_N)) then
+        if (Initialized(isotherm_rxn%Freundlich_N)) then
           option%io_buffer = 'LANGMUIR isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '" cannot include &
             &FREUNDLICH_N.'
@@ -199,7 +175,7 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
           call PrintErrMsg(option)
         endif
       case(SORPTION_FREUNDLICH)
-        if (.not.Uninitialized(isotherm_rxn%Langmuir_B)) then
+        if (Initialized(isotherm_rxn%Langmuir_B)) then
           option%io_buffer = 'FREUNDLICH isotherm reaction "' // &
             trim(isotherm_rxn%species_name) // '" cannot include &
             &LANGMUIR_B.'
@@ -228,44 +204,15 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
         trim(isotherm_rxn%species_name) // '".'
       call PrintErrMsg(option)
     endif
-    ! Unused coefficients are stored as zero, matching CreateLink.
     if (Uninitialized(isotherm_rxn%Langmuir_B)) then
       isotherm_rxn%Langmuir_B = 0.d0
     endif
     if (Uninitialized(isotherm_rxn%Freundlich_N)) then
       isotherm_rxn%Freundlich_N = 0.d0
     endif
-    if (associated(sec_cont_isotherm_rxn)) then
-      sec_cont_isotherm_rxn%itype = isotherm_rxn%itype
-      if (Uninitialized(sec_cont_isotherm_rxn%Langmuir_B)) then
-        sec_cont_isotherm_rxn%Langmuir_B = 0.d0
-      endif
-      if (Uninitialized(sec_cont_isotherm_rxn%Freundlich_N)) then
-        sec_cont_isotherm_rxn%Freundlich_N = 0.d0
-      endif
-      if (UnInitialized(sec_cont_isotherm_rxn%Kd)) then
-        option%io_buffer = 'SEC_CONT_DISTRIBUTION_COEFFICIENT must be &
-          &specified for all ISOTHERM_REACTIONs when using &
-          &MULTIPLE_CONTINUUM.'
-        call PrintErrMsg(option)
-      endif
-    endif
 
     call ReactionIsothermConvertKDUnits(isotherm_rxn%Kd,kd_units, &
                                         ikd_units,option)
-    if (associated(sec_cont_isotherm_rxn)) then
-      call ReactionIsothermConvertKDUnits(sec_cont_isotherm_rxn%Kd, &
-                                          multi_kd_units, &
-                                          imulti_kd_units,option)
-      if (ikd_units /= imulti_kd_units) then
-        if (len_trim(kd_units) == 0) kd_units = 'default'
-        if (len_trim(multi_kd_units) == 0) multi_kd_units = 'default'
-        option%io_buffer = 'kd unit must match between primary &
-                            &and secondary continuum: ' // &
-                            trim(kd_units) // ' vs ' // trim(multi_kd_units)
-        call PrintErrMsg(option)
-      endif
-    endif
     if (Initialized(isotherm%ikd_units) .and. &
         isotherm%ikd_units /= ikd_units) then
       if (ikd_units == KD_UNIT_KG_M3_BULK) then
@@ -297,8 +244,33 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
     prev_isotherm_rxn => isotherm_rxn
     nullify(isotherm_rxn)
 
-    if (associated(sec_cont_isotherm_rxn)) then
-      ! add to list
+    if (option%use_sc) then
+      sec_cont_isotherm_rxn => ReactionIsothermCreateLink()
+      sec_cont_isotherm_rxn%species_name = prev_isotherm_rxn%species_name
+      sec_cont_isotherm_rxn%itype = prev_isotherm_rxn%itype
+      sec_cont_isotherm_rxn%kd_mineral_name = &
+        prev_isotherm_rxn%kd_mineral_name
+      sec_cont_isotherm_rxn%Langmuir_B = prev_isotherm_rxn%Langmuir_B
+      sec_cont_isotherm_rxn%Freundlich_N = &
+        prev_isotherm_rxn%Freundlich_N
+      if (Uninitialized(sec_cont_kd)) then
+        sec_cont_isotherm_rxn%Kd = prev_isotherm_rxn%Kd
+        imulti_kd_units = ikd_units
+      else
+        sec_cont_isotherm_rxn%Kd = sec_cont_kd
+        call ReactionIsothermConvertKDUnits(sec_cont_isotherm_rxn%Kd, &
+                                            multi_kd_units, &
+                                            imulti_kd_units,option)
+        if (ikd_units /= imulti_kd_units) then
+          if (len_trim(kd_units) == 0) kd_units = 'default'
+          if (len_trim(multi_kd_units) == 0) multi_kd_units = 'default'
+          option%io_buffer = 'kd unit must match between primary &
+                              &and secondary continuum: ' // &
+                              trim(kd_units) // ' vs ' // &
+                              trim(multi_kd_units)
+          call PrintErrMsg(option)
+        endif
+      endif
       if (.not.associated(isotherm%multicontinuum_isotherm_list)) then
         isotherm%multicontinuum_isotherm_list => sec_cont_isotherm_rxn
         sec_cont_isotherm_rxn%id = 1
@@ -309,6 +281,10 @@ subroutine ReactionIsothermReadIsotherm(isotherm,input,option)
       endif
       sec_cont_prev_isotherm_rxn => sec_cont_isotherm_rxn
       nullify(sec_cont_isotherm_rxn)
+    elseif (Initialized(sec_cont_kd)) then
+      option%io_buffer = 'Make sure MULTIPLE_CONTINUUM &
+        &keyword is set, SECONDARY_CONTINUUM_KD.'
+      call PrintErrMsg(option)
     endif
   enddo
   call InputPopBlock(input,option)
