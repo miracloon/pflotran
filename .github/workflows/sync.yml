@@ -1,0 +1,64 @@
+name: Sync Bitbucket → GitHub (keep .github)
+
+on:
+  schedule:
+    # 每天一次
+    - cron: "12 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-bitbucket
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo (this GitHub repo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git author
+        run: |
+          git config user.name "${{ vars.GH_USERNAME || 'github-actions[bot]' }}"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add Bitbucket remote and fetch
+        env:
+          BB_USER: ${{ secrets.BITBUCKET_USERNAME }}
+          BB_APP_PASS: ${{ secrets.BITBUCKET_APP_PASSWORD }}
+        run: |
+          set -e
+          # 你的 Bitbucket 仓库地址
+          git remote remove bitbucket 2>/dev/null || true
+          git remote add bitbucket https://${BB_USER}:${BB_APP_PASS}@bitbucket.org/pflotran/pflotran.git
+          git fetch --prune --tags bitbucket
+
+      - name: Detect upstream default branch
+        id: detect
+        run: |
+          UPSTREAM=$(git remote show bitbucket | sed -n '/HEAD branch/s/.*: //p')
+          if [ -z "$UPSTREAM" ]; then UPSTREAM=main; fi
+          echo "upstream=$UPSTREAM" >> $GITHUB_OUTPUT
+
+      - name: Create work tree from Bitbucket HEAD
+        run: |
+          git checkout -B sync-tmp "bitbucket/${{ steps.detect.outputs.upstream }}"
+
+      - name: Overlay .github from current GitHub default branch
+        # 关键步骤：把我们仓库里现有的 .github 覆盖回工作树
+        run: |
+          git checkout "origin/${GITHUB_REF_NAME}" -- .github || true
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .github
+            git commit -m "Preserve .github workflows"
+          fi
+
+      - name: Push to GitHub default branch
+        # 使用 GITHUB_TOKEN（由 actions/checkout 配好），无需自备 GH_TOKEN
+        run: |
+          git push --force-with-lease origin HEAD:"${GITHUB_REF_NAME}"
