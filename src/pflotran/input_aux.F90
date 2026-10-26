@@ -885,7 +885,10 @@ end subroutine InputReadPflotranStringSlave
 
 subroutine InputReadCard(input, option, word, push_to_log)
   !
-  ! Reads a keyword from the input deck, providing the option of logging
+  ! Reads a keyword from the input deck and records it in the keyword log.
+  ! push_to_log is kept so existing call sites compile. It is ignored.
+  ! Those call sites still need the word in keyword_buf for a later
+  ! unnamed InputPushBlock.
   !
   ! Author: Glenn Hammond
   ! Date: 09/20/19
@@ -901,14 +904,7 @@ subroutine InputReadCard(input, option, word, push_to_log)
   if (InputError(input)) return
 
   call InputReadWord(input,option,word,PETSC_TRUE)
-
-  if (present(push_to_log)) then
-    if (push_to_log) then
-      call InputPushCard(input,word,option)
-    endif
-  else
-    call InputPushCard(input,word,option)
-  endif
+  call InputPushCard(input,word,option)
 
 end subroutine InputReadCard
 
