@@ -34,7 +34,7 @@ END
 
 SPECIFIED_VELOCITY
   UNIFORM? YES
-  DATASET 5.69333e-4 0.d0 0.d0 m/yr
+  DATASET 5.69333d-4 0.d0 0.d0 m/s   ! Darcy; pore velocity 5.6 cm/min
 END
 
 # == chemistry ================================================================
@@ -82,9 +82,9 @@ CHEMISTRY
       #MINERAL Halite
       CEC 71.004  ! mol/m^3
       CATIONS
-        Na+   7.94328
-        Ca++  1. REFERENCE
-        Mg++  1.44544
+        Ca++  1.d0 REFERENCE
+        Na+   0.1258925412d0   ! 10^{-0.9}
+        Mg++  0.6918309709d0   ! 10^{-0.16}
       /
     /
   /

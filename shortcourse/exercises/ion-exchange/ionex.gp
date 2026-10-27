@@ -1,4 +1,6 @@
 #!/opt/local/bin/gnuplot -persist
+# Run the simulation with: pflotran -input_prefix voegelin
+# Plot from this directory with: gnuplot -persist ionex.gp
 #
 #    
 #    	G N U P L O T
@@ -153,15 +155,17 @@ set key title 'Cations' font "Helvetica,20"
 set key top left Left spacing 1.65 width 8
 #set key noinvert samplen 4 spacing 1 width 4 height 0 
 
-pv=515.357
+pv=0.481*0.61/5.69333e-4
 set xrange[0:80]
 set grid
 set pointsize 2
+# Skip the CSV header in voegelin-obs-0.pft; its data rows use whitespace.
+# Columns 1--4 are time [s], Total Na+ [m], Total Ca++ [m], Total Mg++ [m].
 plot \
 'exp1.dat' u 1:2 t 'Exp1: Ca^{2+}' w p lt 9 pt 5,\
 'exp1.dat' u 3:4 t 'Exp1: Mg^{2+}' w p lt 4 pt 4,\
 'exp1.dat' u 5:6 t 'Exp1: Na^{+}' w p lt 2 pt 6,\
-'observation-0.tec' u ($1/pv):4 t 'PFLOTRAN: Ca^{2+}' w l lw 3 lt 9,\
-'observation-0.tec' u ($1/pv):5 t 'PFLOTRAN: Mg^{2+}' w l lw 3 lt 4,\
-'observation-0.tec' u ($1/pv):3 t 'PFLOTRAN: Na^+' w l lw 3 lt 2
+'voegelin-obs-0.pft' skip 1 u ($1/pv):3 t 'PFLOTRAN: Ca^{2+}' w l lw 3 lt 9,\
+'voegelin-obs-0.pft' skip 1 u ($1/pv):4 t 'PFLOTRAN: Mg^{2+}' w l lw 3 lt 4,\
+'voegelin-obs-0.pft' skip 1 u ($1/pv):2 t 'PFLOTRAN: Na^+' w l lw 3 lt 2
 #    EOF

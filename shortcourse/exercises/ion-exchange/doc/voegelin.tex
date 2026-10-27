@@ -1,0 +1,683 @@
+\documentclass{beamer}
+
+\usepackage{comment}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{verbatim}
+\usepackage{multicol}
+\usepackage{booktabs}
+\definecolor{green}{RGB}{0,128,0}
+
+\def\EQ#1\EN{\begin{equation*}#1\end{equation*}}
+\def\BA#1\EA{\begin{align*}#1\end{align*}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\eq}{\ =\ }
+
+\newcommand\p{\partial}
+\newcommand\gD{\mathcal D}
+\newcommand{\bnabla}{\boldsymbol{\nabla}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+
+\newcommand{\caq}{c_\text{aq}}
+\newcommand{\gehcomment}[1]{{{\color{orange} #1}}}
+\newcommand\add[1]{{{\color{blue} #1}}}
+\newcommand\remove[1]{\sout{{\color{red} #1}}}
+\newcommand\codecomment[1]{{{\color{green} #1}}}
+\newcommand\redcomment[1]{{{\color{red} #1}}}
+\newcommand\bluecomment[1]{{{\color{blue} #1}}}
+\newcommand\greencomment[1]{{{\color{green} #1}}}
+\newcommand\magentacomment[1]{{{\color{magenta} #1}}}
+
+\begin{comment}
+\tiny
+\scriptsize
+\footnotesize
+\small
+\normalsize
+\large
+\Large
+\LARGE
+\huge
+\Huge
+\end{comment}
+
+\begin{document}
+\title{1D Ion Exchange Scenario\ldots\\in a Nutshell}
+\author{Glenn Hammond}
+\date{\today}
+
+\frame{\titlepage}
+
+%-----------------------------------------------------------------------------
+\section{Description of the Voegelin Column}
+
+\frame{\frametitle{Description of the Voegelin Column}
+
+Voegelin et al.\ (2000) measured Ca--Mg--Na ion exchange in soil column C1.
+PFLOTRAN applies the Gaines--Thomas model to that experiment.
+The simulated domain is a 1D column. The physical column diameter does not enter the model.
+
+\begin{itemize}
+  \item Length 48.1 cm, porosity 0.61, pore velocity 5.6 cm/min
+  \item Domain: $0.481 \times 1 \times 1$ m, 250 cells along $x$
+  \item Darcy velocity: $q = 0.61 \times 5.6$ cm/min $= 5.69333\times 10^{-4}$ m/s
+  \item One pore volume: $L\phi/q = 515.36$ s
+  \item Inlet changes at 20 and 65 pore volumes
+  \item Final time: 80 pore volumes (41228.6 s)
+  \item CEC: 71.004 mol/m$^3$ bulk
+\end{itemize}
+
+}
+
+%-----------------------------------------------------------------------------
+\frame{\frametitle{Cation Exchange Capacity}
+
+The measured CEC is 0.06 mol/kg of soil. PFLOTRAN stores the exchanger capacity per bulk volume,
+\[
+\omega = \rho_s(1-\phi)\,\mathrm{CEC}.
+\]
+The grain density implied by the reported mass density per pore volume, $\rho_l = 1.94$ g/cm$^3$, is
+\[
+\rho_s = \frac{\phi\rho_l}{1-\phi} = 3.0344~\mathrm{g/cm^3}.
+\]
+With $\phi = 0.61$ this gives $\omega = 71.004$ mol/m$^3$.
+
+}
+
+%-----------------------------------------------------------------------------
+\frame{\frametitle{Feed Waters}
+
+Totals are molal. pH is 4.6 in every water.
+$\log_{10} P_{\mathrm{CO_2}} = -3.5$.
+The inlet tracer steps from $4.65\times 10^{-3}$ to $9.4\times 10^{-3}$ mol/kg.
+
+\footnotesize
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+ & Initial & Inlet1 & Inlet2 & Inlet3 \\
+ & column & 0--20 PV & 20--65 PV & 65--80 PV \\
+\midrule
+Na$^+$ & $4.65\times 10^{-3}$ & $\sim 0$ & $4.6\times 10^{-3}$ & $4.65\times 10^{-3}$ \\
+Ca$^{2+}$ & $5.2\times 10^{-3}$ & $5.3\times 10^{-3}$ & $\sim 0$ & $5.2\times 10^{-3}$ \\
+Mg$^{2+}$ & $4.55\times 10^{-3}$ & $\sim 0$ & $2.4\times 10^{-3}$ & $4.55\times 10^{-3}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\normalsize
+
+Inlet1 is a Ca pulse. Inlet2 replaces Ca with Na and Mg. Inlet3 returns to the initial cations.
+
+}
+
+%-----------------------------------------------------------------------------
+\section{Governing Equations}
+
+\frame{\frametitle{Governing Reactive Transport Equations}
+
+\large
+
+\EQ
+\frac{\p}{\p t}\left(\phi s\,\Psi_j + \sum_\alpha S_{j\alpha}\right) + \bnabla\cdot\bOmega_j \eq 0
+\EN
+
+\EQ
+S_{j\alpha} \eq \sum_i \nu_{ji}\, S_{i\alpha}
+\EN
+
+\EQ
+\bOmega_j \eq \big(\bq - \phi s\,\tau\,\gD\bnabla\big)\Psi_j
+\EN
+
+\footnotesize
+\begin{align*}
+\phi &\eq \text{porosity}; \quad
+s \eq \text{liquid saturation}; \quad
+\tau \eq \text{tortuosity} \\
+\Psi_j &\eq \text{aqueous total component concentration of primary species } j \\
+S_{j\alpha} &\eq \text{total sorbed concentration of primary species } j \text{ on site } \alpha \\
+S_{i\alpha} &\eq \text{sorbed concentration of surface species } i \text{ on site } \alpha \\
+\nu_{ji} &\eq \text{stoichiometry of primary species } j \text{ in surface species } i \\
+\bOmega_j &\eq \text{solute flux}; \quad
+\bq \eq \text{Darcy velocity} \\
+\gD &\eq \text{species-independent diffusion coefficient}
+\end{align*}
+
+Flow is not solved. \texttt{SPECIFIED\_VELOCITY} assigns $\bq$.
+
+}
+
+%-----------------------------------------------------------------------------
+\frame{\frametitle{Gaines--Thomas Ion Exchange}
+
+\footnotesize
+Equivalent fraction of cation $i$ on exchanger $\alpha$, with capacity $\omega$:
+\EQ
+X_i \eq \frac{z_i S_i}{\omega}, \qquad \sum_i X_i \eq 1.
+\EN
+With reference cation $j$, the mass-action equation stored by PFLOTRAN is
+\EQ
+X_i \eq k_i a_i \left(\frac{X_j}{k_j a_j}\right)^{z_i/z_j},
+\qquad a_i \eq \gamma_i m_i.
+\EN
+The \texttt{REFERENCE} cation has $k_j = 1$ and is placed first.
+The entered value is the coefficient $k$, not $\log_{10} k$.
+For a reference valence $z_j$ and exchange coefficient $K_{ij}$,
+\[
+k_i = \big(K_{ij}\big)^{1/z_j}.
+\]
+
+}
+
+%-----------------------------------------------------------------------------
+\frame{\frametitle{Selectivity Coefficients}
+
+Ca$^{2+}$ is the reference cation. The two exchange reactions are
+\begin{align*}
+2\,\mathrm{Na}^+ + \mathrm{X}_2\mathrm{Ca}
+  &\rightleftharpoons \mathrm{Ca}^{2+} + 2\,\mathrm{XNa}, \\
+\mathrm{Mg}^{2+} + \mathrm{X}_2\mathrm{Ca}
+  &\rightleftharpoons \mathrm{Ca}^{2+} + \mathrm{X}_2\mathrm{Mg}.
+\end{align*}
+
+\footnotesize
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Cation & Entered $k$ & Meaning \\
+\midrule
+Ca$^{2+}$ & 1 & \texttt{REFERENCE} \\
+Na$^+$ & 0.1258925412 & $10^{-0.9}$ \\
+Mg$^{2+}$ & 0.6918309709 & $10^{-0.16}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+}
+
+%-----------------------------------------------------------------------------
+\section{Input Deck}
+
+\begin{frame}[fragile]\frametitle{SIMULATION}
+
+\begin{itemize}
+  \item Subsurface transport only. No flow process model.
+  \item \texttt{GIRT}: global implicit reactive transport
+\end{itemize}
+
+\begin{semiverbatim}
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      MODE GIRT
+    /
+  /
+END
+
+SUBSURFACE
+  ...
+END_SUBSURFACE
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{NUMERICAL\_METHODS}
+
+\begin{itemize}
+  \item Direct solver. The column has 250 cells.
+  \item Tighten the Newton tolerances to $10^{-8}$.
+\end{itemize}
+
+\begin{semiverbatim}
+NUMERICAL_METHODS TRANSPORT
+  TIMESTEPPER
+    TS_ACCELERATION 8
+    MAX_STEPS 100000
+  /
+  NEWTON_SOLVER
+    PRECONDITIONER_MATRIX_TYPE AIJ
+    RTOL 1.d-8
+    ATOL 1.d-8
+    STOL 1.d-30
+  /
+  LINEAR_SOLVER
+    SOLVER DIRECT
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{SPECIFIED\_VELOCITY}
+
+\begin{itemize}
+  \item \texttt{SPECIFIED\_VELOCITY} is the Darcy velocity.
+  \item $5.69333\times 10^{-4}$ m/s is $0.61 \times 5.6$ cm/min.
+  \item The unit string converts the vector to m/s, the internal unit.
+\end{itemize}
+
+\begin{semiverbatim}
+SPECIFIED_VELOCITY
+  UNIFORM? YES
+  DATASET 5.69333d-4 0.d0 0.d0 m/s
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{GRID}
+
+\begin{itemize}
+  \item Length 0.481 m, divided into 250 cells ($\Delta x = 1.924$ mm)
+  \item Unit cross section. Transport is one-dimensional.
+\end{itemize}
+
+\begin{semiverbatim}
+GRID
+  TYPE STRUCTURED
+  NXYZ 250 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    0.481d0 1.d0 1.d0
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{MATERIAL\_PROPERTY and FLUID\_PROPERTY}
+
+\begin{itemize}
+  \item Porosity 0.61 is also stored as \texttt{REFERENCE\_POROSITY}.
+  \item Diffusion coefficient $10^{-9}$ m$^2$/s. Tortuosity is 1.
+  \item Permeability is unused while the velocity is prescribed.
+\end{itemize}
+
+\begin{semiverbatim}
+REFERENCE_POROSITY 0.61d0
+
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+MATERIAL_PROPERTY HD
+  ID 1
+  POROSITY 0.61
+  TORTUOSITY 1.0
+  PERMEABILITY
+    PERM_ISO 5.43d-13
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{CHEMISTRY}
+
+\tiny
+\begin{semiverbatim}
+CHEMISTRY
+  PRIMARY_SPECIES
+    Na+
+    Ca++
+    Mg++
+    H+
+    HCO3-
+    Cl-
+    Tracer
+  /
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaOH+
+    CaCO3(aq)
+    CaHCO3+
+    CaCl+
+    MgCO3(aq)
+    MgHCO3+
+    MgCl+
+    HCl(aq)
+    NaCl(aq)
+    NaOH(aq)
+  /
+  PASSIVE_GAS_SPECIES
+    CO2(g)
+  /
+  MINERALS
+    Halite
+  /
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{CHEMISTRY options}
+
+\begin{itemize}
+  \item Hanford database, log formulation, and activity coefficients
+  \item \texttt{MOLAL} makes the \texttt{T} constraints molalities
+  \item Print free-ion and total molalities for every primary species
+  \item Halite is kinetic with a negligible rate. It is not the exchanger.
+\end{itemize}
+
+\scriptsize
+\begin{semiverbatim}
+  MINERAL_KINETICS
+    Halite
+      RATE_CONSTANT 1.e-30
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS
+  MOLAL
+  OUTPUT
+    ALL
+    FREE_ION
+    TOTAL
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{ION\_EXCHANGE\_RXN}
+
+\begin{itemize}
+  \item CEC is mol/m$^3$ bulk. The \texttt{MINERAL} link is commented out.
+  \item Ca$^{2+}$ is \texttt{REFERENCE} and its coefficient is 1.
+  \item Na and Mg coefficients are $10^{-0.9}$ and $10^{-0.16}$.
+\end{itemize}
+
+\begin{semiverbatim}
+  SORPTION
+    ION_EXCHANGE_RXN
+      CEC 71.004
+      CATIONS
+        Ca++  1.d0 REFERENCE
+        Na+   0.1258925412d0
+        Mg++  0.6918309709d0
+      /
+    /
+  /
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{REGION and OBSERVATION}
+
+\begin{itemize}
+  \item \texttt{west} is the inlet face. \texttt{east} is the outlet face.
+  \item The observation at \texttt{east} is the breakthrough curve.
+\end{itemize}
+
+\tiny
+\begin{semiverbatim}
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+REGION west
+  FACE WEST
+  COORDINATES
+    0. 0. 0.
+    0. 1. 1.
+  /
+END
+REGION east
+  FACE EAST
+  COORDINATES
+    0.481 0. 0.
+    0.481 1. 1.
+  /
+END
+OBSERVATION
+  REGION east
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile,allowframebreaks]\frametitle{CONSTRAINT}
+
+\begin{itemize}
+  \item \texttt{T} total molality, \texttt{pH} pH, \texttt{Z} charge balance
+  \item \texttt{G} with a non-positive value is $\log_{10}$ of the gas partial pressure in bar
+  \item Halite: volume fraction 0.5, area 1 m$^2$/m$^3$
+\end{itemize}
+
+\scriptsize
+\begin{semiverbatim}
+CONSTRAINT Initial
+  CONCENTRATIONS
+    Na+     4.65d-3  T
+    Ca++    5.2d-3   T
+    Mg++    4.55e-3  T
+    H+      4.6      pH
+    HCO3-  -3.5      G   CO2(g)
+    Cl-     1.d-3    Z
+    Tracer  4.65d-3  T
+  /
+  MINERALS
+    Halite  0.5 1.
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile,allowframebreaks]\frametitle{Inlet constraints}
+
+\scriptsize
+\begin{semiverbatim}
+CONSTRAINT Inlet1          ! 0 to 20 pore volumes
+  CONCENTRATIONS
+    Na+     1.d-16  T
+    Ca++    5.3d-3  T
+    Mg++    1.e-16  T
+    H+      4.6     pH
+    HCO3-  -3.5     G   CO2(g)
+    Cl-     3.d-4   Z
+    Tracer  9.4d-3  T
+  /
+END
+
+CONSTRAINT Inlet2          ! 20 to 65 pore volumes
+  CONCENTRATIONS
+    Na+     4.6d-3  T
+    Ca++    1.d-16  T
+    Mg++    2.4e-3  T
+    H+      4.6     pH
+    HCO3-  -3.5     G   CO2(g)
+    Cl-     3.d-4   Z
+    Tracer  9.4d-3  T
+  /
+END
+
+CONSTRAINT Inlet3          ! 65 to 80 pore volumes
+  CONCENTRATIONS
+    Na+     4.65d-3 T
+    Ca++    5.2d-3  T
+    Mg++    4.55e-3 T
+    H+      4.6     pH
+    HCO3-  -3.5     G   CO2(g)
+    Cl-     3.d-4   Z
+    Tracer  9.4d-3  T
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{TRANSPORT\_CONDITION}
+
+\begin{itemize}
+  \item The list must start at time 0.
+  \item 10307.1 s is 20 pore volumes. 33498.2 s is 65 pore volumes.
+  \item The outlet reuses the initial water.
+\end{itemize}
+
+\scriptsize
+\begin{semiverbatim}
+TRANSPORT_CONDITION Initial
+  TYPE DIRICHLET
+  CONSTRAINT_LIST
+    0.d0 Initial
+  /
+END
+TRANSPORT_CONDITION west
+  TYPE DIRICHLET
+  CONSTRAINT_LIST
+    0.d0    Inlet1
+    10307.1 Inlet2
+    33498.2 Inlet3
+  /
+END
+TRANSPORT_CONDITION east
+  TYPE DIRICHLET
+  CONSTRAINT_LIST
+    0.d0 Initial
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{INITIAL\_CONDITION, BOUNDARY\_CONDITION, STRATA}
+
+\scriptsize
+\begin{semiverbatim}
+INITIAL_CONDITION Initial
+  TRANSPORT_CONDITION Initial
+  REGION all
+END
+BOUNDARY_CONDITION
+  TRANSPORT_CONDITION west
+  REGION west
+END
+BOUNDARY_CONDITION
+  TRANSPORT_CONDITION east
+  REGION east
+END
+STRATA
+  MATERIAL HD
+  REGION all
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{TIME}
+
+\begin{itemize}
+  \item Final time 41228.6 s is 80 pore volumes.
+  \item The usual maximum step is 20 s.
+  \item The step is cut to 1 s across each inlet switch.
+\end{itemize}
+
+\scriptsize
+\begin{semiverbatim}
+TIME
+  FINAL_TIME 41228.6 s
+  INITIAL_TIMESTEP_SIZE 1. s
+  MAXIMUM_TIMESTEP_SIZE 20. s
+  MAXIMUM_TIMESTEP_SIZE 1. s at 10200. s
+  MAXIMUM_TIMESTEP_SIZE 20. s at 10350 s
+  MAXIMUM_TIMESTEP_SIZE 1. s at 33300 s
+  MAXIMUM_TIMESTEP_SIZE 20. s at 33600 s
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{OUTPUT}
+
+\begin{itemize}
+  \item Snapshot the column at 20, 65, and 80 pore volumes.
+  \item Write the east observation every time step.
+  \item Both plotting scripts read \texttt{voegelin-obs-0.pft}.
+\end{itemize}
+
+\begin{semiverbatim}
+OUTPUT
+  TIMES s 10307.1 33498.2 41228.6
+  PRINT_COLUMN_IDS
+  PERIODIC_OBSERVATION TIMESTEP 1
+  FORMAT TECPLOT POINT
+END
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\section{Running the Example}
+
+\begin{frame}[fragile]\frametitle{Running PFLOTRAN}
+
+The input deck is \texttt{voegelin.in}.
+
+\begin{semiverbatim}
+> cd $PFLOTRAN_DIR
+> cd shortcourse/exercises/ion-exchange
+> pflotran -input_prefix voegelin
+> python3 plot_ionex.py
+\end{semiverbatim}
+
+\medskip
+\small
+Both \texttt{plot\_ionex.py} and \texttt{ionex.gp} read \texttt{exp1.dat}
+and \texttt{voegelin-obs-0.pft}.
+Python writes \texttt{ionex.png}. To display the curves with gnuplot, run
+\texttt{gnuplot -persist ionex.gp}.
+Pore volume is time divided by $L\phi/q = 515.36$ s.
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}\frametitle{Outlet breakthrough}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.92\linewidth]{../ionex.png}
+\end{figure}
+
+\footnotesize
+Symbols are the Voegelin et al.\ (2000) measurements.
+Lines are PFLOTRAN. Self-sharpening fronts arrive near 10 and 71 pore volumes.
+The Mg front from about 30 to 55 pore volumes is self-broadening.
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\begin{frame}\frametitle{References}
+
+\small
+Voegelin, A., V.M. Vulava, F. Kuhnen, and R. Kretzschmar (2000)
+Multicomponent transport of major cations predicted from binary adsorption
+experiments, \textit{Journal of Contaminant Hydrology}, \textbf{46}, 319--338.
+
+\medskip
+DOI: \href{https://doi.org/10.1016/S0169-7722(00)00132-7}{10.1016/S0169-7722(00)00132-7}.
+
+\end{frame}
+
+\end{document}
