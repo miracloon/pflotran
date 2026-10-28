@@ -1031,13 +1031,31 @@ subroutine OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
       units = 'MJ/kmol'
       category = OUTPUT_GENERIC
       id = LIQUID_ENERGY
-      subvar = ZERO_INTEGER
+    case ('LIQUID_ENERGY_PER_MASS')
+      name = 'Liquid Energy'
+      units = 'MJ/kg'
+      category = OUTPUT_GENERIC
+      id = LIQUID_ENERGY_PER_MASS
     case ('LIQUID_ENERGY_PER_VOLUME')
       name = 'Liquid Energy'
       units = 'MJ/m^3'
       category = OUTPUT_GENERIC
-      id = LIQUID_ENERGY
-      subvar = ONE_INTEGER
+      id = LIQUID_ENERGY_PER_VOLUME
+    case ('LIQUID_ENTHALPY')
+      name = 'Liquid Enthalpy'
+      units = 'MJ/kmol'
+      category = OUTPUT_GENERIC
+      id = LIQUID_ENTHALPY
+    case ('LIQUID_ENTHALPY_PER_MASS')
+      name = 'Liquid Enthalpy'
+      units = 'MJ/kg'
+      category = OUTPUT_GENERIC
+      id = LIQUID_ENTHALPY_PER_MASS
+    case ('LIQUID_ENTHALPY_PER_VOLUME')
+      name = 'Liquid Enthalpy'
+      units = 'MJ/m^3'
+      category = OUTPUT_GENERIC
+      id = LIQUID_ENTHALPY_PER_VOLUME
     case ('GAS_PRESSURE')
       name = 'Gas Pressure'
       units = 'Pa'
@@ -1073,13 +1091,31 @@ subroutine OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
       units = 'MJ/kmol'
       category = OUTPUT_GENERIC
       id = GAS_ENERGY
-      subvar = ZERO_INTEGER
+    case ('GAS_ENERGY_PER_MASS')
+      name = 'Gas Energy'
+      units = 'MJ/kg'
+      category = OUTPUT_GENERIC
+      id = GAS_ENERGY_PER_MASS
     case ('GAS_ENERGY_PER_VOLUME')
       name = 'Gas Energy'
       units = 'MJ/m^3'
       category = OUTPUT_GENERIC
-      id = GAS_ENERGY
-      subvar = ONE_INTEGER
+      id = GAS_ENERGY_PER_VOLUME
+    case ('GAS_ENTHALPY')
+      name = 'Gas Enthalpy'
+      units = 'MJ/kmol'
+      category = OUTPUT_GENERIC
+      id = GAS_ENTHALPY
+    case ('GAS_ENTHALPY_PER_MASS')
+      name = 'Gas Enthalpy'
+      units = 'MJ/kg'
+      category = OUTPUT_GENERIC
+      id = GAS_ENTHALPY_PER_MASS
+    case ('GAS_ENTHALPY_PER_VOLUME')
+      name = 'Gas Enthalpy'
+      units = 'MJ/m^3'
+      category = OUTPUT_GENERIC
+      id = GAS_ENTHALPY_PER_VOLUME
     case ('ICE_SATURATION')
       name = 'Ice Saturation'
       units = ''

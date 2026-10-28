@@ -728,20 +728,24 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                 option)
         call OutputVariableAddToList(output_variable_list,name, &
                                      category,units,id)
-      case ('LIQUID_ENERGY')
+      case ('LIQUID_ENERGY','GAS_ENERGY','LIQUID_ENTHALPY','GAS_ENTHALPY')
+        name = word
         call InputReadCard(input,option,word2)
         if (.not.InputError(input)) then
           if (StringCompareIgnoreCase(word2,'PER_VOLUME')) then
             word = trim(word) // '_PER_VOLUME'
+          elseif (StringCompareIgnoreCase(word2,'PER_MASS')) then
+            word = trim(word) // '_PER_MASS'
           else
+            input%ierr = INPUT_ERROR_DEFAULT
             call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,LIQUID_ENERGY')
+                               'VARIABLES,' // trim(name))
           endif
         endif
         call OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
                                 option)
         call OutputVariableAddToList(output_variable_list,name, &
-                                     category,units,id,subvar)
+                                     category,units,id)
       case ('GAS_DENSITY')
         call InputReadCard(input,option,word2)
         if (.not.InputError(input)) then
@@ -756,21 +760,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                 option)
         call OutputVariableAddToList(output_variable_list,name, &
                                      category,units,id)
-      case ('GAS_ENERGY')
-        call InputReadCard(input,option,word2)
-        if (.not.InputError(input)) then
-          if (StringCompareIgnoreCase(word2,'PER_VOLUME')) then
-            word = trim(word) // '_PER_VOLUME'
-          else
-            input%ierr = INPUT_ERROR_DEFAULT
-            call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,GAS_ENERGY')
-          endif
-        endif
-        call OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
-                                option)
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     category,units,id,subvar)
+
       case ('OIL_DENSITY')
         call InputReadCard(input,option,word2)
         if (.not.InputError(input)) then
