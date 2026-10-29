@@ -6968,6 +6968,7 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
   PetscReal, pointer :: vec_ptr(:)
   PetscReal :: xmass, lnQKgas, eh0, pe0, ph0
   PetscReal :: tempreal, dummy1, dummy2
+  PetscReal :: energy, enthalpy, den, den_kg
   PetscInt :: tempint, tempint2, icct
   PetscInt :: irate, irxn
   PetscInt :: ivar_temp
@@ -6986,11 +6987,8 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
     case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE,AIR_PRESSURE,CO2_PRESSURE, &
          LIQUID_SATURATION,GAS_SATURATION,HYDRATE_SATURATION,ICE_SATURATION, &
          TRAPPED_GAS_SATURATION,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION, &
-         LIQUID_SALT_MASS_FRAC,LIQUID_ENERGY,LIQUID_ENERGY_PER_MASS, &
-         LIQUID_ENERGY_PER_VOLUME,LIQUID_ENTHALPY, &
-         LIQUID_ENTHALPY_PER_MASS,LIQUID_ENTHALPY_PER_VOLUME, &
-         GAS_ENERGY,GAS_ENERGY_PER_MASS,GAS_ENERGY_PER_VOLUME, &
-         GAS_ENTHALPY,GAS_ENTHALPY_PER_MASS,GAS_ENTHALPY_PER_VOLUME, &
+         LIQUID_SALT_MASS_FRAC,LIQUID_ENERGY,LIQUID_ENTHALPY, &
+         GAS_ENERGY,GAS_ENTHALPY, &
          LIQUID_DENSITY, &
          GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
          CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL,LIQUID_MOBILITY,GAS_MOBILITY, &
@@ -7043,8 +7041,7 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
                 patch%aux%TH%auxvars(grid%nL2G(local_id))%den_kg
             enddo
           case(GAS_MOLE_FRACTION,GAS_DENSITY,GAS_VISCOSITY,GAS_ENERGY, &
-               GAS_ENERGY_PER_MASS,GAS_ENERGY_PER_VOLUME,GAS_ENTHALPY, &
-               GAS_ENTHALPY_PER_MASS,GAS_ENTHALPY_PER_VOLUME)
+               GAS_ENTHALPY)
             call PatchUnsupportedVariable('TH','for gas phase',option)
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
@@ -7089,53 +7086,16 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
           case(LIQUID_MOLE_FRACTION)
             call PatchUnsupportedVariable('TH','LIQUID_MOLE_FRACTION',option)
           ! u and h are stored as MJ/kmol
-          case(LIQUID_ENERGY)
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = patch%aux%TH%auxvars(ghosted_id)%u
-            enddo
-          case(LIQUID_ENERGY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = patch%aux%TH%auxvars(ghosted_id)%den_kg
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%TH%auxvars(ghosted_id)%u * &
-                  patch%aux%TH%auxvars(ghosted_id)%den / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%TH%auxvars(ghosted_id)%u
+              enthalpy = patch%aux%TH%auxvars(ghosted_id)%h
+              den = patch%aux%TH%auxvars(ghosted_id)%den
+              den_kg = patch%aux%TH%auxvars(ghosted_id)%den_kg
               vec_ptr(local_id) = &
-                patch%aux%TH%auxvars(ghosted_id)%u * &
-                patch%aux%TH%auxvars(ghosted_id)%den
-            enddo
-          case(LIQUID_ENTHALPY)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = patch%aux%TH%auxvars(ghosted_id)%h
-            enddo
-          case(LIQUID_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = patch%aux%TH%auxvars(ghosted_id)%den_kg
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%TH%auxvars(ghosted_id)%h * &
-                  patch%aux%TH%auxvars(ghosted_id)%den / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%TH%auxvars(ghosted_id)%h * &
-                patch%aux%TH%auxvars(ghosted_id)%den
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_TRUE)
             enddo
           case default
             call PatchUnsupportedVariable('TH',ivar,option)
@@ -7168,11 +7128,7 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
                                           option)
           case(GAS_MOLE_FRACTION)
             call PatchUnsupportedVariable('RICHARDS','GAS_MOLE_FRACTION',option)
-          case(LIQUID_ENERGY,LIQUID_ENERGY_PER_MASS, &
-               LIQUID_ENERGY_PER_VOLUME,LIQUID_ENTHALPY, &
-               LIQUID_ENTHALPY_PER_MASS,LIQUID_ENTHALPY_PER_VOLUME, &
-               GAS_ENERGY,GAS_ENERGY_PER_MASS,GAS_ENERGY_PER_VOLUME, &
-               GAS_ENTHALPY,GAS_ENTHALPY_PER_MASS,GAS_ENTHALPY_PER_VOLUME)
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY,GAS_ENERGY,GAS_ENTHALPY)
             call PatchUnsupportedVariable('RICHARDS', &
                                           'energy or enthalpy',option)
           case(LIQUID_VISCOSITY)
@@ -7497,59 +7453,19 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               vec_ptr(local_id) = patch%aux%Mphase% &
                 auxvars(grid%nL2G(local_id))%auxvar_elem(0)%xmol(2+isubvar)
             enddo
-          case(GAS_ENERGY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Mphase% &
-                auxvars(grid%nL2G(local_id))%auxvar_elem(0)%u(2)
-            enddo
-          case(GAS_ENERGY_PER_MASS)
+          ! u and h are stored as MJ/kmol
+          case(GAS_ENERGY,GAS_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(2)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Mphase%auxvars(ghosted_id)% &
-                    auxvar_elem(0)%u(2) * &
-                  patch%aux%Global%auxvars(ghosted_id)%den(2) / &
-                  tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%Mphase%auxvars(ghosted_id)% &
+                auxvar_elem(0)%u(2)
+              enthalpy = patch%aux%Mphase%auxvars(ghosted_id)% &
+                auxvar_elem(0)%h(2)
+              den = patch%aux%Global%auxvars(ghosted_id)%den(2)
+              den_kg = patch%aux%Global%auxvars(ghosted_id)%den_kg(2)
               vec_ptr(local_id) = &
-                patch%aux%Mphase%auxvars(ghosted_id)% &
-                  auxvar_elem(0)%u(2) * &
-                patch%aux%Global%auxvars(ghosted_id)%den(2)
-            enddo
-          case(GAS_ENTHALPY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Mphase% &
-                auxvars(grid%nL2G(local_id))%auxvar_elem(0)%h(2)
-            enddo
-          case(GAS_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(2)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Mphase%auxvars(ghosted_id)% &
-                    auxvar_elem(0)%h(2) * &
-                  patch%aux%Global%auxvars(ghosted_id)%den(2) / &
-                  tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Mphase%auxvars(ghosted_id)% &
-                  auxvar_elem(0)%h(2) * &
-                patch%aux%Global%auxvars(ghosted_id)%den(2)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_TRUE)
             enddo
           case(GAS_VISCOSITY)
             do local_id=1,grid%nlmax
@@ -7587,59 +7503,18 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
                 auxvars(grid%nL2G(local_id))%auxvar_elem(0)%xmol(isubvar)
             enddo
           ! u and h are stored as MJ/kmol
-          case(LIQUID_ENERGY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Mphase% &
-                auxvars(grid%nL2G(local_id))%auxvar_elem(0)%u(1)
-            enddo
-          case(LIQUID_ENERGY_PER_MASS)
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Mphase%auxvars(ghosted_id)% &
-                    auxvar_elem(0)%u(1) * &
-                  patch%aux%Global%auxvars(ghosted_id)%den(1) / &
-                  tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%Mphase%auxvars(ghosted_id)% &
+                auxvar_elem(0)%u(1)
+              enthalpy = patch%aux%Mphase%auxvars(ghosted_id)% &
+                auxvar_elem(0)%h(1)
+              den = patch%aux%Global%auxvars(ghosted_id)%den(1)
+              den_kg = patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
               vec_ptr(local_id) = &
-                patch%aux%Mphase%auxvars(ghosted_id)% &
-                  auxvar_elem(0)%u(1) * &
-                patch%aux%Global%auxvars(ghosted_id)%den(1)
-            enddo
-          case(LIQUID_ENTHALPY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Mphase% &
-                auxvars(grid%nL2G(local_id))%auxvar_elem(0)%h(1)
-            enddo
-          case(LIQUID_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Mphase%auxvars(ghosted_id)% &
-                    auxvar_elem(0)%h(1) * &
-                  patch%aux%Global%auxvars(ghosted_id)%den(1) / &
-                  tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Mphase%auxvars(ghosted_id)% &
-                  auxvar_elem(0)%h(1) * &
-                patch%aux%Global%auxvars(ghosted_id)%den(1)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_TRUE)
             enddo
           case default
             call PatchUnsupportedVariable('MPHASE',ivar,option)
@@ -7766,69 +7641,20 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
                   grid%nL2G(local_id))%den(option%liquid_phase)
             enddo
           ! U and H are stored as MJ/kmol
-          case(LIQUID_ENERGY)
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                U(option%liquid_phase)
+              enthalpy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                H(option%liquid_phase)
+              den = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%liquid_phase)
+              den_kg = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%liquid_phase)
               vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase)
-            enddo
-          case(LIQUID_ENERGY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    U(option%liquid_phase) * &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%liquid_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase)
-            enddo
-          case(LIQUID_ENTHALPY)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase)
-            enddo
-          case(LIQUID_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    H(option%liquid_phase) * &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%liquid_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_TRUE)
             enddo
           case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             do local_id=1,grid%nlmax
@@ -7867,69 +7693,21 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%sat(option%gas_phase)
             enddo
-          case(GAS_ENERGY)
+          ! U and H are stored as MJ/kmol
+          case(GAS_ENERGY,GAS_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                U(option%gas_phase)
+              enthalpy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                H(option%gas_phase)
+              den = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%gas_phase)
+              den_kg = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%gas_phase)
               vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase)
-            enddo
-          case(GAS_ENERGY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    U(option%gas_phase) * &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%gas_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase)
-            enddo
-          case(GAS_ENTHALPY)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase)
-            enddo
-          case(GAS_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    H(option%gas_phase) * &
-                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%gas_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_TRUE)
             enddo
           case(GAS_DENSITY)
             do local_id=1,grid%nlmax
@@ -8063,69 +7841,20 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
                   grid%nL2G(local_id))%den(option%liquid_phase)
             enddo
           ! U and H are stored as MJ/kmol
-          case(LIQUID_ENERGY)
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                U(option%liquid_phase)
+              enthalpy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                H(option%liquid_phase)
+              den = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%liquid_phase)
+              den_kg = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%liquid_phase)
               vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase)
-            enddo
-          case(LIQUID_ENERGY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    U(option%liquid_phase) * &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%liquid_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase)
-            enddo
-          case(LIQUID_ENTHALPY)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase)
-            enddo
-          case(LIQUID_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    H(option%liquid_phase) * &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%liquid_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_TRUE)
             enddo
           case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             do local_id=1,grid%nlmax
@@ -8159,69 +7888,21 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               vec_ptr(local_id) = patch%aux%Hydrate%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%sat(option%gas_phase)
             enddo
-          case(GAS_ENERGY)
+          ! U and H are stored as MJ/kmol
+          case(GAS_ENERGY,GAS_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                U(option%gas_phase)
+              enthalpy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                H(option%gas_phase)
+              den = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%gas_phase)
+              den_kg = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%gas_phase)
               vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase)
-            enddo
-          case(GAS_ENERGY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    U(option%gas_phase) * &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%gas_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase)
-            enddo
-          case(GAS_ENTHALPY)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase)
-            enddo
-          case(GAS_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    H(option%gas_phase) * &
-                  patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den(option%gas_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_TRUE)
             enddo
           case(GAS_DENSITY)
             do local_id=1,grid%nlmax
@@ -8499,69 +8180,20 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
                   grid%nL2G(local_id))%den(option%liquid_phase)
             enddo
           ! U and H are stored as MJ/kg
-          case(LIQUID_ENERGY)
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    U(option%liquid_phase) * &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den_kg(option%liquid_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENERGY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                U(option%liquid_phase)
+              enthalpy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                H(option%liquid_phase)
+              den = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%liquid_phase)
+              den_kg = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%liquid_phase)
               vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase)
-            enddo
-          case(LIQUID_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase)
-            enddo
-          case(LIQUID_ENTHALPY)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    H(option%liquid_phase) * &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den_kg(option%liquid_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(LIQUID_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase)
-            enddo
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_FALSE)
             enddo
           case(LIQUID_SALT_MASS_FRAC)
             do local_id=1,grid%nlmax
@@ -8600,69 +8232,21 @@ subroutine PatchGetVariable1(patch,field,reaction_base,option, &
               vec_ptr(local_id) = patch%aux%SCO2%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%sat(option%gas_phase)
             enddo
-          case(GAS_ENERGY)
+          ! U and H are stored as MJ/kg
+          case(GAS_ENERGY,GAS_ENTHALPY)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    U(option%gas_phase) * &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den_kg(option%gas_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENERGY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
+              energy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                U(option%gas_phase)
+              enthalpy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                H(option%gas_phase)
+              den = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%gas_phase)
+              den_kg = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%gas_phase)
               vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase)
-            enddo
-          case(GAS_ENERGY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase)
-            enddo
-          case(GAS_ENTHALPY)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              tempreal = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase)
-              if (tempreal > 0.d0) then
-                vec_ptr(local_id) = &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    H(option%gas_phase) * &
-                  patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    den_kg(option%gas_phase) / tempreal
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
-          case(GAS_ENTHALPY_PER_MASS)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase)
-            enddo
-          case(GAS_ENTHALPY_PER_VOLUME)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              vec_ptr(local_id) = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase)
+                PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                          ivar,isubvar,PETSC_FALSE)
             enddo
           case(GAS_DENSITY)
             do local_id=1,grid%nlmax
@@ -9652,6 +9236,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
   PetscInt :: ivar_temp
 
   PetscReal :: value, xmass, lnQKgas, eh0, pe0, ph0
+  PetscReal :: energy, enthalpy, den, den_kg
   PetscInt :: irate, irxn
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)
@@ -9679,11 +9264,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
     case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE,CO2_PRESSURE, &
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION,HYDRATE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY, &
-         LIQUID_ENERGY_PER_MASS,LIQUID_ENERGY_PER_VOLUME, &
-         LIQUID_ENTHALPY,LIQUID_ENTHALPY_PER_MASS, &
-         LIQUID_ENTHALPY_PER_VOLUME,GAS_ENERGY,GAS_ENERGY_PER_MASS, &
-         GAS_ENERGY_PER_VOLUME,GAS_ENTHALPY,GAS_ENTHALPY_PER_MASS, &
-         GAS_ENTHALPY_PER_VOLUME,TRAPPED_GAS_SATURATION,LIQUID_DENSITY, &
+         LIQUID_ENTHALPY,GAS_ENERGY,GAS_ENTHALPY, &
+         TRAPPED_GAS_SATURATION,LIQUID_DENSITY, &
          GAS_DENSITY,GAS_DENSITY_MOL, &
          LIQUID_VISCOSITY,GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,ICE_DENSITY, &
@@ -9718,8 +9300,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
             value = patch%aux%TH%auxvars(ghosted_id)%mobility
           case(GAS_MOLE_FRACTION,GAS_DENSITY)
             call PatchUnsupportedVariable('TH','GAS_MOLE_FRACTION',option)
-          case(GAS_ENERGY,GAS_ENERGY_PER_MASS,GAS_ENERGY_PER_VOLUME, &
-               GAS_ENTHALPY,GAS_ENTHALPY_PER_MASS,GAS_ENTHALPY_PER_VOLUME)
+          case(GAS_ENERGY,GAS_ENTHALPY)
             call PatchUnsupportedVariable('TH','gas energy or enthalpy', &
                                           option)
           case(GAS_SATURATION)
@@ -9741,32 +9322,14 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
           case(LIQUID_MOLE_FRACTION)
             call PatchUnsupportedVariable('TH','LIQUID_MOLE_FRACTION',option)
           ! u and h are stored as MJ/kmol
-          case(LIQUID_ENERGY)
-            value = patch%aux%TH%auxvars(ghosted_id)%u
-          case(LIQUID_ENERGY_PER_MASS)
-            tempreal = patch%aux%TH%auxvars(ghosted_id)%den_kg
-            if (tempreal > 0.d0) then
-              value = patch%aux%TH%auxvars(ghosted_id)%u * &
-                      patch%aux%TH%auxvars(ghosted_id)%den / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENERGY_PER_VOLUME)
-            value = patch%aux%TH%auxvars(ghosted_id)%u * &
-                    patch%aux%TH%auxvars(ghosted_id)%den
-          case(LIQUID_ENTHALPY)
-            value = patch%aux%TH%auxvars(ghosted_id)%h
-          case(LIQUID_ENTHALPY_PER_MASS)
-            tempreal = patch%aux%TH%auxvars(ghosted_id)%den_kg
-            if (tempreal > 0.d0) then
-              value = patch%aux%TH%auxvars(ghosted_id)%h * &
-                      patch%aux%TH%auxvars(ghosted_id)%den / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            value = patch%aux%TH%auxvars(ghosted_id)%h * &
-                    patch%aux%TH%auxvars(ghosted_id)%den
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
+            energy = patch%aux%TH%auxvars(ghosted_id)%u
+            enthalpy = patch%aux%TH%auxvars(ghosted_id)%h
+            den = patch%aux%TH%auxvars(ghosted_id)%den
+            den_kg = patch%aux%TH%auxvars(ghosted_id)%den_kg
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_TRUE)
           case(SECONDARY_TEMPERATURE)
             local_id = grid%nG2L(ghosted_id)
             if (size(patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp) < isubvar) then
@@ -9793,11 +9356,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
                                           option)
           case(GAS_MOLE_FRACTION)
             call PatchUnsupportedVariable('RICHARDS','GAS_MOLE_FRACTION',option)
-          case(LIQUID_ENERGY,LIQUID_ENERGY_PER_MASS, &
-               LIQUID_ENERGY_PER_VOLUME,LIQUID_ENTHALPY, &
-               LIQUID_ENTHALPY_PER_MASS,LIQUID_ENTHALPY_PER_VOLUME, &
-               GAS_ENERGY,GAS_ENERGY_PER_MASS,GAS_ENERGY_PER_VOLUME, &
-               GAS_ENTHALPY,GAS_ENTHALPY_PER_MASS,GAS_ENTHALPY_PER_VOLUME)
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY,GAS_ENERGY,GAS_ENTHALPY)
             call PatchUnsupportedVariable('RICHARDS', &
                                           'energy or enthalpy',option)
           case(LIQUID_PRESSURE,MAXIMUM_PRESSURE)
@@ -9949,40 +9508,16 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
               value = 0.d0
             endif
           ! u and h are stored as MJ/kmol
-          case(LIQUID_ENERGY)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
+            energy = patch%aux%Mphase%auxvars(ghosted_id)% &
                       auxvar_elem(0)%u(1)
-          case(LIQUID_ENERGY_PER_MASS)
-            tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
-            if (tempreal > 0.d0) then
-              value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                        auxvar_elem(0)%u(1) * &
-                      patch%aux%Global%auxvars(ghosted_id)%den(1) / &
-                      tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENERGY_PER_VOLUME)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                      auxvar_elem(0)%u(1) * &
-                    patch%aux%Global%auxvars(ghosted_id)%den(1)
-          case(LIQUID_ENTHALPY)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
+            enthalpy = patch%aux%Mphase%auxvars(ghosted_id)% &
                       auxvar_elem(0)%h(1)
-          case(LIQUID_ENTHALPY_PER_MASS)
-            tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
-            if (tempreal > 0.d0) then
-              value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                        auxvar_elem(0)%h(1) * &
-                      patch%aux%Global%auxvars(ghosted_id)%den(1) / &
-                      tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                      auxvar_elem(0)%h(1) * &
-                    patch%aux%Global%auxvars(ghosted_id)%den(1)
+            den = patch%aux%Global%auxvars(ghosted_id)%den(1)
+            den_kg = patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_TRUE)
           case(LIQUID_DENSITY)
             value = patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
           case(LIQUID_VISCOSITY)
@@ -9998,40 +9533,17 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
             else
               value = 0.d0
             endif
-          case(GAS_ENERGY)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
+          ! u and h are stored as MJ/kmol
+          case(GAS_ENERGY,GAS_ENTHALPY)
+            energy = patch%aux%Mphase%auxvars(ghosted_id)% &
                       auxvar_elem(0)%u(2)
-          case(GAS_ENERGY_PER_MASS)
-            tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(2)
-            if (tempreal > 0.d0) then
-              value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                        auxvar_elem(0)%u(2) * &
-                      patch%aux%Global%auxvars(ghosted_id)%den(2) / &
-                      tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENERGY_PER_VOLUME)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                      auxvar_elem(0)%u(2) * &
-                    patch%aux%Global%auxvars(ghosted_id)%den(2)
-          case(GAS_ENTHALPY)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
+            enthalpy = patch%aux%Mphase%auxvars(ghosted_id)% &
                       auxvar_elem(0)%h(2)
-          case(GAS_ENTHALPY_PER_MASS)
-            tempreal = patch%aux%Global%auxvars(ghosted_id)%den_kg(2)
-            if (tempreal > 0.d0) then
-              value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                        auxvar_elem(0)%h(2) * &
-                      patch%aux%Global%auxvars(ghosted_id)%den(2) / &
-                      tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENTHALPY_PER_VOLUME)
-            value = patch%aux%Mphase%auxvars(ghosted_id)% &
-                      auxvar_elem(0)%h(2) * &
-                    patch%aux%Global%auxvars(ghosted_id)%den(2)
+            den = patch%aux%Global%auxvars(ghosted_id)%den(2)
+            den_kg = patch%aux%Global%auxvars(ghosted_id)%den_kg(2)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_TRUE)
           case(GAS_DENSITY)
             value = patch%aux%Global%auxvars(ghosted_id)%den_kg(2)
           case(GAS_VISCOSITY)
@@ -10119,52 +9631,18 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den(option%liquid_phase)
           ! U and H are stored as MJ/kmol
-          case(LIQUID_ENERGY)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
+            energy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                 U(option%liquid_phase)
-          case(LIQUID_ENERGY_PER_MASS)
-            tempreal = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%liquid_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENERGY_PER_VOLUME)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                U(option%liquid_phase) * &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%liquid_phase)
-          case(LIQUID_ENTHALPY)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+            enthalpy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                 H(option%liquid_phase)
-          case(LIQUID_ENTHALPY_PER_MASS)
-            tempreal = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%liquid_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                H(option%liquid_phase) * &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+            den = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                 den(option%liquid_phase)
+            den_kg = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%liquid_phase)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_TRUE)
           case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%liquid_phase)
@@ -10193,52 +9671,19 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
           case(GAS_DENSITY_MOL)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den(option%gas_phase)
-          case(GAS_ENERGY)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+          ! U and H are stored as MJ/kmol
+          case(GAS_ENERGY,GAS_ENTHALPY)
+            energy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                 U(option%gas_phase)
-          case(GAS_ENERGY_PER_MASS)
-            tempreal = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%gas_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENERGY_PER_VOLUME)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                U(option%gas_phase) * &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%gas_phase)
-          case(GAS_ENTHALPY)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+            enthalpy = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                 H(option%gas_phase)
-          case(GAS_ENTHALPY_PER_MASS)
-            tempreal = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%gas_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase) * &
-                patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENTHALPY_PER_VOLUME)
-            value = &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
-                H(option%gas_phase) * &
-              patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+            den = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                 den(option%gas_phase)
+            den_kg = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%gas_phase)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_TRUE)
           case(GAS_MOLE_FRACTION,GAS_MASS_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%gas_phase)
@@ -10330,52 +9775,18 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
             value = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den(option%liquid_phase)
           ! U and H are stored as MJ/kmol
-          case(LIQUID_ENERGY)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
+            energy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                 U(option%liquid_phase)
-          case(LIQUID_ENERGY_PER_MASS)
-            tempreal = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%liquid_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENERGY_PER_VOLUME)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                U(option%liquid_phase) * &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%liquid_phase)
-          case(LIQUID_ENTHALPY)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+            enthalpy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                 H(option%liquid_phase)
-          case(LIQUID_ENTHALPY_PER_MASS)
-            tempreal = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%liquid_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%liquid_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                H(option%liquid_phase) * &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+            den = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                 den(option%liquid_phase)
+            den_kg = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%liquid_phase)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_TRUE)
           case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             value = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%liquid_phase)
@@ -10404,52 +9815,19 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
           case(GAS_DENSITY_MOL)
             value = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den(option%gas_phase)
-          case(GAS_ENERGY)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+          ! U and H are stored as MJ/kmol
+          case(GAS_ENERGY,GAS_ENTHALPY)
+            energy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                 U(option%gas_phase)
-          case(GAS_ENERGY_PER_MASS)
-            tempreal = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%gas_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENERGY_PER_VOLUME)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                U(option%gas_phase) * &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%gas_phase)
-          case(GAS_ENTHALPY)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+            enthalpy = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                 H(option%gas_phase)
-          case(GAS_ENTHALPY_PER_MASS)
-            tempreal = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%gas_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase) * &
-                patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den(option%gas_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENTHALPY_PER_VOLUME)
-            value = &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
-                H(option%gas_phase) * &
-              patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+            den = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                 den(option%gas_phase)
+            den_kg = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den_kg(option%gas_phase)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_TRUE)
           case(GAS_MOLE_FRACTION,GAS_MASS_FRACTION)
             value = patch%aux%Hydrate%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%gas_phase)
@@ -10625,52 +10003,18 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
             value = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den(option%liquid_phase)
           ! U and H are stored as MJ/kg
-          case(LIQUID_ENERGY)
-            tempreal = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%liquid_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%liquid_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENERGY_PER_MASS)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+          case(LIQUID_ENERGY,LIQUID_ENTHALPY)
+            energy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                 U(option%liquid_phase)
-          case(LIQUID_ENERGY_PER_VOLUME)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                U(option%liquid_phase) * &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%liquid_phase)
-          case(LIQUID_ENTHALPY)
-            tempreal = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%liquid_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%liquid_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%liquid_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(LIQUID_ENTHALPY_PER_MASS)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+            enthalpy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                 H(option%liquid_phase)
-          case(LIQUID_ENTHALPY_PER_VOLUME)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                H(option%liquid_phase) * &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+            den = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%liquid_phase)
+            den_kg = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                 den_kg(option%liquid_phase)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_FALSE)
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%liquid_phase)
@@ -10694,52 +10038,19 @@ function PatchGetVariableValueAtCell(patch,field,reaction_base,option, &
           case(GAS_DENSITY_MOL)
             value = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den(option%gas_phase)
-          case(GAS_ENERGY)
-            tempreal = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%gas_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  U(option%gas_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENERGY_PER_MASS)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+          ! U and H are stored as MJ/kg
+          case(GAS_ENERGY,GAS_ENTHALPY)
+            energy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                 U(option%gas_phase)
-          case(GAS_ENERGY_PER_VOLUME)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                U(option%gas_phase) * &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den_kg(option%gas_phase)
-          case(GAS_ENTHALPY)
-            tempreal = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                den(option%gas_phase)
-            if (tempreal > 0.d0) then
-              value = &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  H(option%gas_phase) * &
-                patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                  den_kg(option%gas_phase) / tempreal
-            else
-              value = 0.d0
-            endif
-          case(GAS_ENTHALPY_PER_MASS)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+            enthalpy = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                 H(option%gas_phase)
-          case(GAS_ENTHALPY_PER_VOLUME)
-            value = &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
-                H(option%gas_phase) * &
-              patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+            den = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
+                den(option%gas_phase)
+            den_kg = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                 den_kg(option%gas_phase)
+            value = &
+              PatchScaleSpecificEnergy(energy,enthalpy,den,den_kg, &
+                                        ivar,isubvar,PETSC_FALSE)
           case(GAS_MOLE_FRACTION)
             value = patch%aux%SCO2%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%gas_phase)
@@ -11358,12 +10669,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
 
   iphase = 1
   select case(ivar)
-    case(LIQUID_ENERGY,LIQUID_ENERGY_PER_MASS, &
-         LIQUID_ENERGY_PER_VOLUME,GAS_ENERGY, &
-         GAS_ENERGY_PER_MASS,GAS_ENERGY_PER_VOLUME, &
-         LIQUID_ENTHALPY,LIQUID_ENTHALPY_PER_MASS, &
-         LIQUID_ENTHALPY_PER_VOLUME,GAS_ENTHALPY, &
-         GAS_ENTHALPY_PER_MASS,GAS_ENTHALPY_PER_VOLUME)
+    case(LIQUID_ENERGY,GAS_ENERGY,LIQUID_ENTHALPY,GAS_ENTHALPY)
       call PrintErrMsg(option,'Energy and enthalpy variables are &
         &output only.')
     case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE,LIQUID_SATURATION, &
@@ -13564,6 +12870,75 @@ subroutine PatchSetupUpwindDirection(patch,option)
   patch%flow_upwind_direction_bc => upwind_direction_bc
 
 end subroutine PatchSetupUpwindDirection
+
+! ************************************************************************** !
+
+function PatchScaleSpecificEnergy(internal_energy,enthalpy,den,den_kg, &
+                                  ivar,isubvar,stored_molar)
+  !
+  ! Returns internal energy or enthalpy in the requested units.
+  ! ivar selects internal energy or enthalpy. isubvar is
+  ! ENERGY_PER_MOLE (0, the default), ENERGY_PER_MASS, or
+  ! ENERGY_PER_VOLUME. stored_molar is true for MJ/kmol storage
+  ! (TH, MPHASE, GENERAL, HYDRATE). SCO2 stores MJ/kg.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 10/28/26
+  !
+
+  use Output_Aux_module
+  use Variables_module
+
+  implicit none
+
+  PetscReal :: internal_energy
+  PetscReal :: enthalpy
+  PetscReal :: den
+  PetscReal :: den_kg
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscBool :: stored_molar
+
+  PetscReal :: PatchScaleSpecificEnergy
+  PetscReal :: energy
+
+  if (ivar == LIQUID_ENTHALPY .or. ivar == GAS_ENTHALPY) then
+    energy = enthalpy
+  else
+    energy = internal_energy
+  endif
+
+  ! Remains zero when a denominator density is not positive.
+  PatchScaleSpecificEnergy = 0.d0
+  if (stored_molar) then
+    select case(isubvar)
+      case(ENERGY_PER_MOLE)
+        PatchScaleSpecificEnergy = energy
+      case(ENERGY_PER_MASS)
+        if (den_kg > 0.d0) then
+          PatchScaleSpecificEnergy = energy * den / den_kg
+        endif
+      case(ENERGY_PER_VOLUME)
+        PatchScaleSpecificEnergy = energy * den
+      case default
+        PatchScaleSpecificEnergy = 0.d0
+    end select
+  else
+    select case(isubvar)
+      case(ENERGY_PER_MOLE)
+        if (den > 0.d0) then
+          PatchScaleSpecificEnergy = energy * den_kg / den
+        endif
+      case(ENERGY_PER_MASS)
+        PatchScaleSpecificEnergy = energy
+      case(ENERGY_PER_VOLUME)
+        PatchScaleSpecificEnergy = energy * den_kg
+      case default
+        PatchScaleSpecificEnergy = 0.d0
+    end select
+  endif
+
+end function PatchScaleSpecificEnergy
 
 ! ************************************************************************** !
 

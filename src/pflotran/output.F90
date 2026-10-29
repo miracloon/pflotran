@@ -745,7 +745,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
                                 option)
         call OutputVariableAddToList(output_variable_list,name, &
-                                     category,units,id)
+                                     category,units,id,subvar)
       case ('GAS_DENSITY')
         call InputReadCard(input,option,word2)
         if (.not.InputError(input)) then

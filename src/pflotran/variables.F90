@@ -235,14 +235,6 @@ module Variables_module
   PetscInt, parameter, public :: MEAN_SOIL_GRAIN_SIZE = 180
 
   PetscInt, parameter, public :: LIQUID_ENTHALPY = 191
-  PetscInt, parameter, public :: LIQUID_ENERGY_PER_MASS = 192
-  PetscInt, parameter, public :: LIQUID_ENERGY_PER_VOLUME = 193
-  PetscInt, parameter, public :: GAS_ENERGY_PER_MASS = 194
-  PetscInt, parameter, public :: GAS_ENERGY_PER_VOLUME = 195
-  PetscInt, parameter, public :: GAS_ENTHALPY = 196
-  PetscInt, parameter, public :: LIQUID_ENTHALPY_PER_MASS = 197
-  PetscInt, parameter, public :: LIQUID_ENTHALPY_PER_VOLUME = 198
-  PetscInt, parameter, public :: GAS_ENTHALPY_PER_MASS = 199
-  PetscInt, parameter, public :: GAS_ENTHALPY_PER_VOLUME = 200
+  PetscInt, parameter, public :: GAS_ENTHALPY = 192
 
 end module Variables_module
