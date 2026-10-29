@@ -1131,6 +1131,11 @@ subroutine OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
       units = ''
       category = OUTPUT_SATURATION
       id = PRECIPITATE_SATURATION
+    case ('SALT_PRECIPITATE_SATURATION')
+      name = 'Salt Precipitate Saturation'
+      units = ''
+      category = OUTPUT_SATURATION
+      id = PRECIPITATE_SATURATION
     case ('TRAPPED_GAS_SATURATION')
       name = 'Trapped Gas Saturation'
       units = ''
@@ -1447,6 +1452,11 @@ subroutine OutputVariableToID(word,name,units,category,id,subvar,subsubvar, &
       units = ''
       category = OUTPUT_GENERIC
       id = WELL_CELLS
+    case ('WELL_BHP')
+      name = 'Well BHP'
+      units = 'Pa'
+      category = OUTPUT_PRESSURE
+      id = WELL_BHP
     case('ELECTRICAL_CONDUCTIVITY','ELECTRICAL_POTENTIAL', &
          'ELECTRICAL_JACOBIAN','ELECTRICAL_POTENTIAL_DIPOLE', &
          'ARCHIE_CEMENTATION_EXPONENT','ARCHIE_SATURATION_EXPONENT', &
