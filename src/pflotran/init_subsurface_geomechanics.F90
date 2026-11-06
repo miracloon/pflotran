@@ -14,6 +14,7 @@ module Init_Subsurface_Geomech_module
             InitSubsurfGeomechJumpStart, & ! remove later
             InitSubsurfGeomechSetupRealization, &
             InitSubsurfGeomechInitSimulation, &
+            InitSubsurfGeomechPrintSplitScheme, &
             InitSubsurfGeomechSetGeomechMode, &
             InitSubsurfGeomechChkInactiveCells, &
             InitSubsurfGeomechSetupPMC, &
@@ -1347,6 +1348,41 @@ end subroutine InitMatPropToGeomechRegions
 
 ! ************************************************************************** !
 
+subroutine InitSubsurfGeomechPrintSplitScheme(option)
+  !
+  ! Write the flow-mechanics split scheme to the output file.
+  !
+  ! Author: Jumanah Al Kubaisy
+  ! Date: 11/06/26
+  !
+
+  use Option_module
+
+  implicit none
+
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: split_scheme_name
+
+  select case(option%geomechanics%split_scheme)
+    case(GEOMECH_DRAINED_SPLIT)
+      split_scheme_name = 'DRAINED'
+    case(GEOMECH_FIXED_STRAIN_SPLIT)
+      split_scheme_name = 'FIXED_STRAIN'
+    case(GEOMECH_FIXED_STRESS_SPLIT)
+      split_scheme_name = 'FIXED_STRESS'
+    case default
+      split_scheme_name = 'UNSET'
+  end select
+  if (OptionPrintToFile(option)) then
+    write(option%fid_out,'(/,a)') 'Geomechanics split scheme: ' // &
+      trim(split_scheme_name)
+  endif
+
+end subroutine InitSubsurfGeomechPrintSplitScheme
+
+! ************************************************************************** !
+
 subroutine InitSubsurfGeomechInitSimulation(simulation, pm_geomech)
   !
   ! This routine initializes geomechanics process
@@ -1402,6 +1438,7 @@ subroutine InitSubsurfGeomechInitSimulation(simulation, pm_geomech)
   nullify(pmc_dummy)
 
   option => simulation%option
+  call InitSubsurfGeomechPrintSplitScheme(option)
   geomech_realization => simulation%geomech%realization
   subsurf_realization => simulation%realization
   pmc_geomech => simulation%geomech%process_model_coupler

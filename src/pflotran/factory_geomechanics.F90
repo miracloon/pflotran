@@ -73,6 +73,8 @@ subroutine FactoryGeomechanicsInitialize(simulation)
   option => simulation%option
   nullify(timestepper)
 
+  call InitSubsurfGeomechPrintSplitScheme(option)
+
   nullify(prev_pm)
   cur_pm => simulation%process_model_list
   do
