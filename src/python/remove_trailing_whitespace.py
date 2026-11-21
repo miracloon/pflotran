@@ -4,10 +4,10 @@ import os
 import re
 
 try:
-  pflotran_dir = os.environ['PFLOTRAN_DIR']
+    pflotran_dir = os.environ['PFLOTRAN_DIR']
 except KeyError:
-  print('PFLOTRAN_DIR must point to PFLOTRAN installation directory and be defined in system environment variables.')
-  sys.exit(1)
+    print('PFLOTRAN_DIR must point to PFLOTRAN installation directory and be defined in system environment variables.')
+    sys.exit(1)
 sys.path.append(pflotran_dir + '/src/python/util')
 
 from source_files import *
@@ -23,8 +23,8 @@ def get_filename(root,suffix):
   
 def copy_files(source_file_roots):
     for root in source_file_roots:
-      filename = get_filename(root,'F90')
-      shutil.copy(filename,path+filename)
+        filename = get_filename(root,'F90')
+        shutil.copy(filename,path+filename)
   
 def open_f(filename):
     return open(path+filename,'r')

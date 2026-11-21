@@ -4,10 +4,10 @@ import os
 import re
 
 try:
-  pflotran_dir = os.environ['PFLOTRAN_DIR']
+    pflotran_dir = os.environ['PFLOTRAN_DIR']
 except KeyError:
-  print('PFLOTRAN_DIR must point to PFLOTRAN installation directory and be defined in system environment variables.')
-  sys.exit(1)
+    print('PFLOTRAN_DIR must point to PFLOTRAN installation directory and be defined in system environment variables.')
+    sys.exit(1)
 sys.path.append(pflotran_dir + '/src/python/util')
 
 from source_files import *
@@ -37,7 +37,7 @@ def check_file_line_length(filename,max_line_length):
     return lines_greater_than_max_length
 
 def print_error(filename,line,iline):
-        print(f'{filename}({iline}) : {len(line)} characters')
+    print(f'{filename}({iline}) : {len(line)} characters')
 
 def main():
 

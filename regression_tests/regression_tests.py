@@ -223,28 +223,28 @@ class RegressionTest(object):
                        testlog)
 
         if self._restart_tuple is not None:
-                if os.path.isfile(self._restart_tuple[0]):
-                    restart_name = "{0}-{1}".format(self._RESTART_PREFIX,
-                                                    self.name())
-                    infile = open(self.name()+'.in','r')
-                    tempfile = open(restart_name+'.in','w')
-                    for line in infile:
-                        tempfile.write(line)
-                        if line.startswith('SIMULATION'):
-                            tempfile.write("  RESTART {0}\n".format(
-                              self._restart_tuple[0]))
-                    infile.close()
-                    tempfile.close()
-                    self._run_test(mpiexec, executable, restart_name,
-                                   dry_run, status, testlog)
-                elif not status.skipped:
-                    status.error = _PFLOTRAN_USER_ERROR
-                    message = self._txtwrap.fill(
-                        "ERROR: restart test '{0}' did not generate a "
-                        "required checkpoint file. This can occur if the "
-                        "checkpointing was not specified or the run "
-                        "failed.".format(self.name()))
-                    print("".join(['\n', message, '\n']), file=testlog)
+            if os.path.isfile(self._restart_tuple[0]):
+                restart_name = "{0}-{1}".format(self._RESTART_PREFIX,
+                                                self.name())
+                infile = open(self.name()+'.in','r')
+                tempfile = open(restart_name+'.in','w')
+                for line in infile:
+                    tempfile.write(line)
+                    if line.startswith('SIMULATION'):
+                        tempfile.write("  RESTART {0}\n".format(
+                          self._restart_tuple[0]))
+                infile.close()
+                tempfile.close()
+                self._run_test(mpiexec, executable, restart_name,
+                               dry_run, status, testlog)
+            elif not status.skipped:
+                status.error = _PFLOTRAN_USER_ERROR
+                message = self._txtwrap.fill(
+                    "ERROR: restart test '{0}' did not generate a "
+                    "required checkpoint file. This can occur if the "
+                    "checkpointing was not specified or the run "
+                    "failed.".format(self.name()))
+                print("".join(['\n', message, '\n']), file=testlog)
 
     def _run_test(self, mpiexec, executable, test_name, dry_run,
                   status, testlog):
@@ -1139,9 +1139,9 @@ class RegressionTest(object):
                             index_z = int(index_z)
 
                             if index_z == 1:
-                               index_z1 = index_z
+                                index_z1 = index_z
                             else:
-                               index_z1 = index_z - 1
+                                index_z1 = index_z - 1
 
                             num_vertices = index_x*index_y*index_z
                             num_values = index_x1 * index_y1 * index_z1
@@ -2210,11 +2210,11 @@ class RegressionTestManager(object):
         """
         # status.fail may be greater than 1
         if (status.fail > 0):
-          self._file_status.fail += 1
+            self._file_status.fail += 1
         self._file_status.warning += status.warning
         # status.error may be greater than 1
         if (status.error > 0):
-          self._file_status.error += 1
+            self._file_status.error += 1
         self._file_status.skipped += status.skipped
         self._file_status.test_count += 1
 
@@ -2801,7 +2801,7 @@ def setup_testlog(txtwrap):
         print("    PETSC_DIR was not defined.", file=testlog)
 
     if os.path.isfile(tempfile):
-      os.remove(tempfile)
+        os.remove(tempfile)
     return testlog
 
 def which(program):
@@ -2835,7 +2835,7 @@ def main(options):
 
     print("\nRunning pflotran regression tests :\n")
     if options.dry_run:
-      print("NOTE --> This was a DRY RUN!!!\n")
+        print("NOTE --> This was a DRY RUN!!!\n")
     print("  Legend\n")
     print("    . - success")
     print("    F - failed regression test (results are outside error "
@@ -2916,9 +2916,9 @@ def main(options):
             #     Otherwise, full path
             w = config_file.split('regression_tests/')
             if len(w) > 1:
-              report_entry = w[1]
+                report_entry = w[1]
             else:
-              report_entry = config_file
+                report_entry = config_file
             report[report_entry] = test_manager.run_status()
             os.chdir(root_dir)
         except Exception as error:
