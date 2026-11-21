@@ -46,12 +46,6 @@ ifdef gnu_runtime_checks
   MYFLAGS += -fcheck=all
 endif
 
-# if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
-# PFLOTRAN_RXN_FLAG 
-ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
-  PFLOTRAN_RXN_FLAG := 1
-endif
-
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
 endif

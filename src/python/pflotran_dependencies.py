@@ -36,13 +36,6 @@ filename = 'pflotran_provenance.F90'
 if not os.path.exists(filename):
     shutil.copy('pflotran_no_provenance.F90',filename)
 
-pflotran_rxn_list = []
-remove_file_list = []
-remove_file_list.append('logging')
-pflotran_rxn_list.append(('constraint',remove_file_list))
-remove_file_list = []
-differing_pflotran_rxn_dependencies = dict(pflotran_rxn_list)
-
 module_skip_list = ('hdf5','h5lt','petsc','clm_pflotran_interface_data', \
                     'ieee_arithmetic','iso_c_binding')
 
@@ -117,88 +110,71 @@ dependency_filename_prefix = 'pflotran_dependencies'
 f = open(dependency_filename_prefix+'.tmp','w')
 # now loop over all source files and create the dependency list
 for root in source_file_roots:
-#  print(root)
-    try:
-        modules_to_remove = differing_pflotran_rxn_dependencies[root]
-        num_times_to_print = 2
-        f.write('ifdef PFLOTRAN_RXN_FLAG\n')
-    except:
-        num_times_to_print = 1
-    for iprint in range(num_times_to_print):
-        module_list = []
-        for line in open(get_filename(root,'F90')):
-            if line.lstrip().startswith('use '):
-                w = line.split()
-                # split again as there may be a ', only ...' after the module name
-                # cannot use string.strip(',') as it will not work in the case of
-                # XXX_module,only...
-                w = w[1].split(',')
-                # skip modules
-                if not w[0].startswith(module_skip_list):
-                    module_list.append(w[0])
-        # remove duplicate modules
-        module_list = set(module_list)
-        file_list = []
-        for module in module_list:
-            try:
-                key = module_dictionary[module]
-            except:
-                # need to skip hdf5
-                if not module.startswith(module_skip_list):
-                    print('ERROR: Module "%s" not found in dictionary.\n' % module)
-                    print(root, module)
-                    sys.exit(1)
+    module_list = []
+    for line in open(get_filename(root,'F90')):
+        if line.lstrip().startswith('use '):
+            w = line.split()
+            # split again as there may be a ', only ...' after the module name
+            # cannot use string.strip(',') as it will not work in the case of
+            # XXX_module,only...
+            w = w[1].split(',')
+            # skip modules
+            if not w[0].startswith(module_skip_list):
+                module_list.append(w[0])
+    # remove duplicate modules
+    module_list = set(module_list)
+    file_list = []
+    for module in module_list:
+        try:
+            key = module_dictionary[module]
+        except:
+            # need to skip hdf5
+            if not module.startswith(module_skip_list):
+                print('ERROR: Module "%s" not found in dictionary.\n' % module)
+                print(root, module)
+                sys.exit(1)
 #      print(key)
-            file_list.append(key)
-        # remove duplicates first as it will destroy an sorting
-        file_set = set(file_list)
-        # convert back to list
-        file_list = list(file_set)
-        # sort
-        sorted_file_list = sorted(file_list)
-        # remove the root file if it is listed
-        filename = get_filename(root,'o')
-        if filename in sorted_file_list:
-            sorted_file_list.remove(filename)
-            print('Removing %s from own dependency.\n' % filename)
+        file_list.append(key)
+    # remove duplicates first as it will destroy an sorting
+    file_set = set(file_list)
+    # convert back to list
+    file_list = list(file_set)
+    # sort
+    sorted_file_list = sorted(file_list)
+    # remove the root file if it is listed
+    filename = get_filename(root,'o')
+    if filename in sorted_file_list:
+        sorted_file_list.remove(filename)
+        print('Removing %s from own dependency.\n' % filename)
 #    print(sorted_file_list)
-        # remove files that are not needed for pflotran rxn
-        if num_times_to_print == 2 and iprint == 0:
-            for root2 in modules_to_remove:
-                sorted_file_list.remove(get_filename(root2,'o'))
-#      print(sorted_file_list)
-        multiple_files_per_line = False
-        if multiple_files_per_line:
-            string = '%s :' % get_filename(root,'o')
+    multiple_files_per_line = False
+    if multiple_files_per_line:
+        string = '%s :' % get_filename(root,'o')
+        f.write('%s' % string)
+        string_len = len(string)
+        indentation = string_len
+        for file in sorted_file_list:
+            string = ' %s' % file
+            word_len = len(string)
+            string_len += word_len
+            if string_len > 78:
+                f.write(' \\\n')
+                for i in range(indentation):
+                    f.write(' ')
+                string_len  = indentation + word_len
             f.write('%s' % string)
-            string_len = len(string)
-            indentation = string_len
-            for file in sorted_file_list:
-                string = ' %s' % file
-                word_len = len(string)
-                string_len += word_len
-                if string_len > 78:
-                    f.write(' \\\n')
-                    for i in range(indentation):
-                        f.write(' ')
-                    string_len  = indentation + word_len
-                f.write('%s' % string)
-            f.write('\n')
+        f.write('\n')
+    else:
+        num_files = len(sorted_file_list)
+        if num_files > 0:
+            f.write('%s : \\\n' % get_filename(root,'o'))
         else:
-            num_files = len(sorted_file_list)
-            if num_files > 0:
-                f.write('%s : \\\n' % get_filename(root,'o'))
-            else:
-                f.write('%s :\n' % get_filename(root,'o'))
-            for ifile in range(num_files):
-                f.write('  %s' % sorted_file_list[ifile])
-                if ifile < num_files-1:
-                    f.write(' \\')
-                f.write('\n')
-        if num_times_to_print == 2 and iprint == 0:
-            f.write('else\n')
-        elif num_times_to_print == 2: 
-            f.write('endif\n')
+            f.write('%s :\n' % get_filename(root,'o'))
+        for ifile in range(num_files):
+            f.write('  %s' % sorted_file_list[ifile])
+            if ifile < num_files-1:
+                f.write(' \\')
+            f.write('\n')
 f.close()  
 
 if not run_test:

@@ -62,12 +62,6 @@ MYFLAGS = -I.
 # Preprocessor flags for special PFLOTRAN features/hacks
 ###############################################################################
 
-# if compiling pflotran_rxn or libpflotranchem.a, need to toggle
-# PFLOTRAN_RXN_FLAG
-ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
-  PFLOTRAN_RXN_FLAG := 1
-endif
-
 ifdef ci
   gnu_code_coverage = 1
   gnu_runtime_checks = 1

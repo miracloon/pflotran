@@ -45,7 +45,9 @@ printf '    Testing dependency generation scripts...'
 PRE_CHECK_TEST_DEPENDENCIES_FLAG=-999
 DEPENDENCIES_LOG="$LOG_DIR/pflotran_dependencies.log"
 python3 ../python/pflotran_dependencies.py test > $DEPENDENCIES_LOG 2>&1
-if [ $(grep -c "ERROR:" "$DEPENDENCIES_LOG") -ne 0 ]; then
+DEPENDENCIES_EXIT_CODE=$?
+if [ $DEPENDENCIES_EXIT_CODE -ne 0 ] || \
+   [ $(grep -c "ERROR:" "$DEPENDENCIES_LOG") -ne 0 ]; then
   cat $DEPENDENCIES_LOG
   echo '\n----- Compilation of PFLOTRAN dependencies failed. This may be due to module names having the correct case in "use" statements. This must be fixed before code modifications can be accepted. -----\n\n'
   PRE_CHECK_TEST_DEPENDENCIES_FLAG=1
